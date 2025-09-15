@@ -7,7 +7,6 @@ Built with **FastAPI (Backend)** and **Streamlit (Frontend)** for a smooth and i
 
 ---
 
-# 📝 Notes Summarizer  
 ### *"Turn long notes into crisp summaries in seconds!"*
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)
