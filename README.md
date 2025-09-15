@@ -1,10 +1,11 @@
+<div align="center">
+
 # 📝 **Notes Summarizer**
 
 🚀 An intelligent tool that extracts and summarizes notes from **PDFs, Images, and Text files** using **OCR, NLP, and LLMs**.  
 Built with **FastAPI (Backend)** and **Streamlit (Frontend)** for a smooth and interactive experience.  
 
 ---
-<div align="center">
 
 # 📝 Notes Summarizer  
 ### *"Turn long notes into crisp summaries in seconds!"*
