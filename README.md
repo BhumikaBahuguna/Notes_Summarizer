@@ -1,4 +1,3 @@
-# Notes_Summarizer
 # 📝 **Notes Summarizer**
 
 🚀 An intelligent tool that extracts and summarizes notes from **PDFs, Images, and Text files** using **OCR, NLP, and LLMs**.  
@@ -28,11 +27,6 @@ Built with **FastAPI (Backend)** and **Streamlit (Frontend)** for a smooth and i
 
 ---
 
-## 📸 Screenshots
-
-| Upload File | Summary Output |
-|-------------|----------------|
-| ![Upload](assets/upload.png) | ![Summary](assets/summary.png) |
 
 ---
 
