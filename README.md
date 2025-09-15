@@ -22,6 +22,16 @@ Built with **FastAPI (Backend)** and **Streamlit (Frontend)** for a smooth and i
 
 ---
 
+
+---
+
+## 📸 Screenshots
+
+| Upload File | Summary Output |
+|-------------|----------------|
+| ![Upload](assets/upload.png) | ![Summary](assets/summary.png) |
+
+---
 ## ✨ Features
 
 - 📂 **Multi-format support** → Upload **PDF, PNG, JPG, JPEG, TXT** files  
