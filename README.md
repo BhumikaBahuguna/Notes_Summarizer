@@ -92,19 +92,19 @@ Frontend (Streamlit)
 bash
 Copy code
 streamlit run notes-summary.py
-📌 Project Structure
-bash
-Copy code
+## 📂 Project Structure
+
 Notes-Summarizer/
 │── backend/
-│   ├── app.py              # FastAPI backend
-│   ├── main.py             # Core logic (OCR + Summarization)
-│   ├── summarizer.py       # Helper functions
-│   └── tests/              # Test files
+│ ├── app.py # FastAPI backend
+│ ├── main.py # Core OCR + summarization
+│ ├── summarizer.py # Helper functions
+│ └── tests/ # Unit tests
 │
-│── notes-summary.py        # Streamlit frontend
-│── requirements.txt        # Dependencies
-│── README.md               # Documentation
+│── notes-summary.py # Streamlit frontend
+│── requirements.txt # Dependencies
+│── README.md # Documentation
+│── assets/ # Screenshots & visuals
 🚧 Future Improvements
 🌍 Deploy on HuggingFace Spaces / Streamlit Cloud
 
