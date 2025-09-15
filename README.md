@@ -4,6 +4,22 @@
 Built with **FastAPI (Backend)** and **Streamlit (Frontend)** for a smooth and interactive experience.  
 
 ---
+<div align="center">
+
+# 📝 Notes Summarizer  
+### *"Turn long notes into crisp summaries in seconds!"*
+
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi)
+![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B?logo=streamlit)
+![OpenAI](https://img.shields.io/badge/OpenAI-LLM-412991?logo=openai)
+![HuggingFace](https://img.shields.io/badge/HuggingFace-Models-FFCC00?logo=huggingface)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Status](https://img.shields.io/badge/Status-Active-success)
+
+</div>
+
+---
 
 ## ✨ Features
 
