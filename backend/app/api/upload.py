@@ -20,5 +20,5 @@ async def upload_file(file: UploadFile = File(...)):
     return {
         "filename": file.filename,
         "engine_used": result["engine"],
-        "text_preview": result["text"][:1000]
+        "text_preview": result["text"]
     }

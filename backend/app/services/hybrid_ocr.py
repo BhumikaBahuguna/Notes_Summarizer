@@ -1,5 +1,10 @@
 from .azure_ocr import extract_text_azure
 from .paddle_ocr import extract_text_paddle
+from app.services.preprocess import preprocess_for_ocr
+
+from backend.app.services import paddle_ocr
+
+from backend.app.services import azure_ocr
 
 
 def text_quality_score(text):
@@ -10,22 +15,17 @@ def text_quality_score(text):
 
 
 def extract_text(file_path):
+    processed_path = preprocess_for_ocr(file_path)
+
     try:
-        azure_text = extract_text_azure(file_path)
+        text = azure_ocr(processed_path)
+        engine = "azure"
     except Exception:
-        azure_text = ""
-
-    score = text_quality_score(azure_text)
-
-    if score > 20:
-        return {
-            "text": azure_text,
-            "engine": "Azure OCR"
-        }
-
-    paddle_text = extract_text_paddle(file_path)
+        text = paddle_ocr(processed_path)
+        engine = "paddle"
 
     return {
-        "text": paddle_text,
-        "engine": "PaddleOCR fallback"
+        "text": text,
+        "engine": engine
     }
+
