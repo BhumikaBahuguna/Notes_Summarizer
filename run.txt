@@ -1,0 +1,2 @@
+Backend: uvicorn app.main:app --reload --port 8000
+Frontend: xdg-open /home/satyamsiuu/Documents/Coding/Notes_Summarizer/test_ui.html

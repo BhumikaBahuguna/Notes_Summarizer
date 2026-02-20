@@ -1,8 +1,11 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from typing import Optional
 import os
 import shutil
 import pypdfium2 as pdfium
 from app.services.ocr_pipeline import extract_text
+from app.services.summarize_pipeline import summarize_text
+from app.services.text_cleaner import clean_text
 
 router = APIRouter()
 
@@ -14,7 +17,10 @@ MAX_PDF_PAGES = 1950
 
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    summarize: Optional[str] = Form(None),  # "brief", "medium", "detailed" or None
+):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
     with open(file_path, "wb") as buffer:
@@ -47,10 +53,32 @@ async def upload_file(file: UploadFile = File(...)):
             os.remove(file_path)
             raise HTTPException(status_code=400, detail=f"Could not read PDF: {e}")
 
+    # OCR extraction
     result = extract_text(file_path)
+    raw_text = result["text"]
 
-    return {
+    # AI-powered text cleaning
+    clean_result = clean_text(raw_text)
+    cleaned = clean_result["cleaned_text"]
+
+    response = {
         "filename": file.filename,
         "engine_used": result["engine"],
-        "text_preview": result["text"]
+        "raw_text": raw_text,
+        "extracted_text": cleaned,
+        "cleaner": clean_result["cleaner"],
     }
+
+    # Summarization (if requested)
+    if summarize and summarize in ("brief", "medium", "detailed"):
+        if cleaned and cleaned.strip():
+            summary_result = summarize_text(cleaned, mode=summarize)
+            response["summary"] = summary_result.get("summary")
+            response["summarizer"] = summary_result.get("summarizer")
+            response["summary_mode"] = summary_result.get("mode")
+            if summary_result.get("error"):
+                response["summary_error"] = summary_result["error"]
+        else:
+            response["summary_error"] = "No text extracted to summarize."
+
+    return response

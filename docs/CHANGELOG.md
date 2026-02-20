@@ -6,7 +6,9 @@ This file documents all changes made to the project, what exists, and what each 
 
 ## Current State (as of Feb 20, 2026)
 
-The backend OCR pipeline is **fully functional**. It accepts image and PDF uploads, extracts text using Azure OCR (primary) with PaddleOCR as a local fallback, and returns the extracted text via a REST API.
+The backend pipeline is **fully functional**: Upload → OCR → AI Clean → Summarize.
+
+It accepts image and PDF uploads, extracts text using Azure OCR (primary) with PaddleOCR as a local fallback, cleans OCR artifacts using Gemini → Groq AI cleaning, optionally summarizes using Gemini → Groq → HuggingFace fallback chain, and returns everything via a REST API.
 
 ---
 
@@ -24,6 +26,8 @@ The backend OCR pipeline is **fully functional**. It accepts image and PDF uploa
   - Rejects PDFs with more than **1,950 pages**
   - Returns proper HTTP 413 errors with descriptive messages
   - Cleans up rejected files from disk
+- **Pipeline**: Save file → Validate → OCR extract → AI clean → Optionally summarize
+- Returns `raw_text` (direct OCR output), `extracted_text` (AI-cleaned), `cleaner` (which AI cleaned it)
 
 ### 3. OCR Pipeline (`backend/app/services/ocr_pipeline.py`)
 - Tries Azure OCR first
@@ -51,8 +55,51 @@ The backend OCR pipeline is **fully functional**. It accepts image and PDF uploa
 - Temporary single-file HTML/CSS/JS test interface (NOT part of the main project)
 - Drag & drop or click to upload files
 - Accepts only `.png`, `.jpg`, `.jpeg`, `.pdf`
-- Displays extracted text, filename, and which OCR engine was used
-- Shows descriptive error messages from the backend (file too large, too many pages, etc.)
+- Two action buttons: "Extract Only" and "Extract + Summarize"
+- Summary mode selector: Brief / Medium / Detailed
+- **Three toggle views**: Summary ↔ Cleaned Text ↔ Raw OCR Output
+- Shows cleaner badge (which AI engine cleaned the text)
+- Displays OCR engine used and summarizer engine used
+- Shows descriptive error messages from the backend
+
+### 8. Summarization Pipeline (`backend/app/services/summarize_pipeline.py`)
+- Fallback chain: **Gemini → Groq → HuggingFace**
+- Accepts a `mode` parameter: `brief`, `medium`, `detailed`
+- Returns which summarizer was used along with the summary
+
+### 9. Gemini Service (`backend/app/services/gemini_service.py`)
+- Uses Google Gemini 2.0 Flash API (`generativelanguage.googleapis.com`)
+- Custom prompts per mode ensuring no information is lost
+- API key from `GEMINI_API_KEY` in `.env`
+
+### 10. Groq Service (`backend/app/services/groq_service.py`)
+- Uses Groq API with LLaMA 3.3 70B model
+- OpenAI-compatible chat completions format
+- API key from `GROQ_API_KEY` in `.env`
+
+### 11. HuggingFace Service (`backend/app/services/huggingface_service.py`)
+- Uses free HuggingFace Inference API (no API key needed)
+- Model: `facebook/bart-large-cnn` (state-of-the-art summarization)
+- Handles long texts by chunking (~2500 chars per chunk)
+- Auto-retries if model is cold-loading (503 response)
+
+### 12. Text Cleaner (`backend/app/services/text_cleaner.py`)
+- AI-powered cleaning of raw OCR output before summarization
+- Removes: page numbers, headers/footers, teacher signatures, OCR garbage characters, unnecessary symbols
+- Preserves: all actual content, formatting, mathematical expressions, bullet points
+- Fallback chain: **Gemini → Groq** (uses same APIs as summarization)
+- Temperature 0.1 for deterministic, reliable cleaning
+- Returns `{ cleaned_text, cleaner }` indicating which AI engine was used
+
+---
+
+## Full Pipeline Flow
+
+```
+Upload File → Validate (size/pages) → OCR (Azure → PaddleOCR)
+    → AI Clean (Gemini → Groq) → Optionally Summarize (Gemini → Groq → HuggingFace)
+    → Return response
+```
 
 ---
 
@@ -92,9 +139,21 @@ These files exist but are **not imported** by the active pipeline:
 
 ---
 
+## Summarization Engine Comparison
+
+| Feature | Gemini (primary) | Groq (fallback 1) | HuggingFace (fallback 2) |
+|---------|------------------|-------------------|--------------------------|
+| Model | Gemini 2.0 Flash | LLaMA 3.3 70B | BART-large-CNN |
+| Quality | Excellent | Excellent | Good (extractive) |
+| Long text | Up to ~1M tokens | Up to 128K tokens | ~1024 tokens (chunked) |
+| Speed | Fast | Very fast | Moderate |
+| Cost | Free tier available | Free tier available | Free (no key needed) |
+| API key needed | Yes (`GEMINI_API_KEY`) | Yes (`GROQ_API_KEY`) | No |
+
+---
+
 ## What's Next (not yet implemented)
 
-- Text summarization (using OpenAI/Gemini/Groq — API keys exist in `.env`)
 - Proper frontend connected to the backend
 - Database for storing extraction history
 - Batch file processing

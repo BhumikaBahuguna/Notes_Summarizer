@@ -44,9 +44,45 @@
       color: #6c63ff;
       word-break: break-all;
     }
-    button {
+
+    .options {
       margin-top: 20px;
-      padding: 12px 36px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .options label { color: #aaa; font-size: 0.9rem; }
+    .mode-btns { display: flex; gap: 6px; }
+    .mode-btns button {
+      padding: 8px 18px;
+      background: #222;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      margin-top: 0;
+      transition: all 0.15s;
+    }
+    .mode-btns button.active {
+      background: #6c63ff;
+      color: #fff;
+      border-color: #6c63ff;
+    }
+    .mode-btns button:hover:not(.active) {
+      border-color: #6c63ff;
+      color: #ccc;
+    }
+
+    .action-btns {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .action-btns button {
+      padding: 12px 32px;
       background: #6c63ff;
       color: #fff;
       border: none;
@@ -55,25 +91,39 @@
       cursor: pointer;
       transition: opacity 0.2s;
     }
-    button:disabled {
+    .action-btns button:disabled {
       opacity: 0.4;
       cursor: not-allowed;
     }
-    button:hover:not(:disabled) { opacity: 0.85; }
+    .action-btns button:hover:not(:disabled) { opacity: 0.85; }
+    .action-btns .secondary {
+      background: #2a2a2a;
+      border: 1px solid #444;
+    }
+
     .result-box {
       margin-top: 30px;
       width: 100%;
-      max-width: 700px;
+      max-width: 750px;
     }
+    .section-title {
+      font-size: 0.95rem;
+      color: #6c63ff;
+      margin: 20px 0 8px 0;
+      font-weight: 600;
+    }
+    .section-title:first-child { margin-top: 0; }
     .meta {
       display: flex;
-      gap: 16px;
+      gap: 12px;
       margin-bottom: 10px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: #888;
+      flex-wrap: wrap;
     }
     .meta span { background: #1a1a1a; padding: 4px 10px; border-radius: 6px; }
     .meta .engine { color: #6c63ff; }
+    .meta .summarizer { color: #4ecdc4; }
     pre {
       background: #1a1a1a;
       border: 1px solid #2a2a2a;
@@ -81,9 +131,9 @@
       padding: 20px;
       white-space: pre-wrap;
       word-wrap: break-word;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       line-height: 1.6;
-      max-height: 500px;
+      max-height: 400px;
       overflow-y: auto;
       color: #d0d0d0;
     }
@@ -96,105 +146,257 @@
       animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .status-msg {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      color: #888;
+    }
     .error { color: #ff6b6b; margin-top: 16px; font-size: 0.9rem; }
+    .toggle-btn {
+      margin-top: 14px;
+      padding: 10px 24px;
+      background: #1a1a1a;
+      color: #6c63ff;
+      border: 1px solid #6c63ff;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .toggle-btn:hover {
+      background: #6c63ff;
+      color: #fff;
+    }
+    .toggle-btn.raw-toggle {
+      color: #888;
+      border-color: #444;
+    }
+    .toggle-btn.raw-toggle:hover {
+      background: #333;
+      color: #ccc;
+      border-color: #555;
+    }
+    .cleaner-badge {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #1e3a2e;
+      color: #4ecdc4;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>📝 OCR Test UI</h1>
+  <h1>📝 OCR + Summarizer Test</h1>
 
   <div class="upload-area" id="dropZone">
-    <p>Click or drag &amp; drop a file here</p>
+    <p>Click or drag & drop a file here</p>
     <div class="formats">Accepted: .png, .jpg, .jpeg, .pdf</div>
     <div class="file-name" id="fileName"></div>
   </div>
   <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf" />
 
-  <button id="uploadBtn" disabled>Extract Text</button>
+  <div class="options">
+    <label>Summary mode:</label>
+    <div class="mode-btns">
+      <button data-mode="brief">Brief</button>
+      <button data-mode="medium" class="active">Medium</button>
+      <button data-mode="detailed">Detailed</button>
+    </div>
+  </div>
+
+  <div class="action-btns">
+    <button id="extractBtn" disabled>Extract Only</button>
+    <button id="summarizeBtn" disabled>Extract + Summarize</button>
+  </div>
 
   <div id="spinner" class="spinner" style="display:none;"></div>
+  <div id="statusMsg" class="status-msg"></div>
   <div id="error" class="error"></div>
 
   <div class="result-box" id="resultBox" style="display:none;">
     <div class="meta">
       <span>File: <strong id="resFile"></strong></span>
-      <span class="engine">Engine: <strong id="resEngine"></strong></span>
+      <span class="engine">OCR: <strong id="resEngine"></strong></span>
+      <span class="summarizer" id="resSummarizerWrap" style="display:none;">
+        Summarizer: <strong id="resSummarizer"></strong>
+      </span>
     </div>
-    <pre id="resText"></pre>
+
+    <!-- Summary view (shown first when summarizing) -->
+    <div id="summaryView" style="display:none;">
+      <div class="section-title">Summary (<span id="resSummaryMode"></span>)</div>
+      <pre id="resSummary"></pre>
+      <button class="toggle-btn" id="showOriginalBtn">📄 Refer to Original Notes</button>
+    </div>
+
+    <!-- Original text view (cleaned) -->
+    <div id="originalView" style="display:none;">
+      <div class="section-title">Extracted Text <span id="cleanerBadge" class="cleaner-badge"></span></div>
+      <pre id="resText"></pre>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="toggle-btn" id="showSummaryBtn" style="display:none;">📝 Back to Summary</button>
+        <button class="toggle-btn raw-toggle" id="showRawBtn" style="display:none;">🔍 Show Raw OCR Output</button>
+      </div>
+    </div>
+
+    <!-- Raw OCR output view -->
+    <div id="rawView" style="display:none;">
+      <div class="section-title">Raw OCR Output (before cleaning)</div>
+      <pre id="resRawText"></pre>
+      <button class="toggle-btn" id="backFromRawBtn">← Back to Cleaned Text</button>
+    </div>
   </div>
 
   <script>
     const API = "http://127.0.0.1:8000";
     const dropZone = document.getElementById("dropZone");
     const fileInput = document.getElementById("fileInput");
-    const uploadBtn = document.getElementById("uploadBtn");
+    const extractBtn = document.getElementById("extractBtn");
+    const summarizeBtn = document.getElementById("summarizeBtn");
     const fileName = document.getElementById("fileName");
     const spinner = document.getElementById("spinner");
+    const statusMsg = document.getElementById("statusMsg");
     const errorDiv = document.getElementById("error");
     const resultBox = document.getElementById("resultBox");
     let selectedFile = null;
+    let selectedMode = "medium";
 
     const ALLOWED = [".png", ".jpg", ".jpeg", ".pdf"];
 
-    function isValid(file) {
-      return ALLOWED.some(ext => file.name.toLowerCase().endsWith(ext));
+    function isValid(f) {
+      return ALLOWED.some(ext => f.name.toLowerCase().endsWith(ext));
     }
 
-    function selectFile(file) {
-      if (!isValid(file)) {
+    function selectFile(f) {
+      if (!isValid(f)) {
         errorDiv.textContent = "Invalid file type. Use .png, .jpg, .jpeg or .pdf";
         return;
       }
       errorDiv.textContent = "";
-      selectedFile = file;
-      fileName.textContent = file.name;
-      uploadBtn.disabled = false;
+      selectedFile = f;
+      fileName.textContent = f.name;
+      extractBtn.disabled = false;
+      summarizeBtn.disabled = false;
     }
 
-    dropZone.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", (e) => {
-      if (e.target.files[0]) selectFile(e.target.files[0]);
+    // Mode buttons
+    document.querySelectorAll(".mode-btns button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelector(".mode-btns .active").classList.remove("active");
+        btn.classList.add("active");
+        selectedMode = btn.dataset.mode;
+      });
     });
 
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropZone.classList.add("dragover");
-    });
+    dropZone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", e => { if (e.target.files[0]) selectFile(e.target.files[0]); });
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
-    dropZone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropZone.classList.remove("dragover");
+    dropZone.addEventListener("drop", e => {
+      e.preventDefault(); dropZone.classList.remove("dragover");
       if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
     });
 
-    uploadBtn.addEventListener("click", async () => {
+    async function doUpload(withSummary) {
       if (!selectedFile) return;
-      uploadBtn.disabled = true;
+      extractBtn.disabled = true;
+      summarizeBtn.disabled = true;
       spinner.style.display = "block";
+      statusMsg.textContent = withSummary ? "Extracting text & summarizing..." : "Extracting text...";
       errorDiv.textContent = "";
       resultBox.style.display = "none";
 
       const form = new FormData();
       form.append("file", selectedFile);
+      if (withSummary) form.append("summarize", selectedMode);
 
       try {
         const res = await fetch(`${API}/upload`, { method: "POST", body: form });
         if (!res.ok) {
           const errData = await res.json().catch(() => null);
-          const msg = errData?.detail || `Server returned ${res.status}`;
-          throw new Error(msg);
+          throw new Error(errData?.detail || `Server returned ${res.status}`);
         }
         const data = await res.json();
 
         document.getElementById("resFile").textContent = data.filename;
         document.getElementById("resEngine").textContent = data.engine_used;
-        document.getElementById("resText").textContent = data.text_preview || "(no text extracted)";
+        document.getElementById("resText").textContent = data.extracted_text || "(no text extracted)";
+
+        // Show raw OCR text and cleaner badge
+        const showRawBtn = document.getElementById("showRawBtn");
+        const cleanerBadge = document.getElementById("cleanerBadge");
+        if (data.raw_text && data.cleaner) {
+          document.getElementById("resRawText").textContent = data.raw_text;
+          cleanerBadge.textContent = "cleaned by " + data.cleaner;
+          cleanerBadge.style.display = "inline";
+          showRawBtn.style.display = "inline-block";
+        } else {
+          cleanerBadge.style.display = "none";
+          showRawBtn.style.display = "none";
+        }
+
+        const summaryView = document.getElementById("summaryView");
+        const originalView = document.getElementById("originalView");
+        const rawView = document.getElementById("rawView");
+        const summarizerWrap = document.getElementById("resSummarizerWrap");
+        const showSummaryBtn = document.getElementById("showSummaryBtn");
+
+        rawView.style.display = "none";
+
+        if (data.summary) {
+          document.getElementById("resSummary").textContent = data.summary;
+          document.getElementById("resSummaryMode").textContent = data.summary_mode;
+          document.getElementById("resSummarizer").textContent = data.summarizer;
+          summarizerWrap.style.display = "inline";
+          // Show summary first, hide original
+          summaryView.style.display = "block";
+          originalView.style.display = "none";
+          showSummaryBtn.style.display = "inline-block";
+        } else {
+          summarizerWrap.style.display = "none";
+          summaryView.style.display = "none";
+          // No summary — show original text directly
+          originalView.style.display = "block";
+          showSummaryBtn.style.display = "none";
+          if (data.summary_error) {
+            errorDiv.textContent = "Summary error: " + data.summary_error;
+          }
+        }
+
         resultBox.style.display = "block";
       } catch (err) {
         errorDiv.textContent = "Error: " + err.message;
       } finally {
         spinner.style.display = "none";
-        uploadBtn.disabled = false;
+        statusMsg.textContent = "";
+        extractBtn.disabled = false;
+        summarizeBtn.disabled = false;
       }
+    }
+
+    extractBtn.addEventListener("click", () => doUpload(false));
+    summarizeBtn.addEventListener("click", () => doUpload(true));
+
+    // Toggle between summary and original notes
+    document.getElementById("showOriginalBtn").addEventListener("click", () => {
+      document.getElementById("summaryView").style.display = "none";
+      document.getElementById("rawView").style.display = "none";
+      document.getElementById("originalView").style.display = "block";
+    });
+    document.getElementById("showSummaryBtn").addEventListener("click", () => {
+      document.getElementById("originalView").style.display = "none";
+      document.getElementById("rawView").style.display = "none";
+      document.getElementById("summaryView").style.display = "block";
+    });
+    document.getElementById("showRawBtn").addEventListener("click", () => {
+      document.getElementById("originalView").style.display = "none";
+      document.getElementById("summaryView").style.display = "none";
+      document.getElementById("rawView").style.display = "block";
+    });
+    document.getElementById("backFromRawBtn").addEventListener("click", () => {
+      document.getElementById("rawView").style.display = "none";
+      document.getElementById("originalView").style.display = "block";
     });
   </script>
 </body>
