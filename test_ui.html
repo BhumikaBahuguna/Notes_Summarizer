@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCR Test UI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 30px;
+      color: #fff;
+    }
+    .upload-area {
+      border: 2px dashed #444;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      width: 100%;
+      max-width: 520px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      background: #1a1a1a;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: #6c63ff;
+    }
+    .upload-area p { color: #888; margin-bottom: 12px; }
+    .upload-area .formats { font-size: 0.8rem; color: #555; }
+    input[type="file"] { display: none; }
+    .file-name {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      color: #6c63ff;
+      word-break: break-all;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 36px;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) { opacity: 0.85; }
+    .result-box {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 700px;
+    }
+    .meta {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+    .meta span { background: #1a1a1a; padding: 4px 10px; border-radius: 6px; }
+    .meta .engine { color: #6c63ff; }
+    pre {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      max-height: 500px;
+      overflow-y: auto;
+      color: #d0d0d0;
+    }
+    .spinner {
+      margin-top: 24px;
+      width: 36px; height: 36px;
+      border: 3px solid #333;
+      border-top-color: #6c63ff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { color: #ff6b6b; margin-top: 16px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>📝 OCR Test UI</h1>
+
+  <div class="upload-area" id="dropZone">
+    <p>Click or drag &amp; drop a file here</p>
+    <div class="formats">Accepted: .png, .jpg, .jpeg, .pdf</div>
+    <div class="file-name" id="fileName"></div>
+  </div>
+  <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf" />
+
+  <button id="uploadBtn" disabled>Extract Text</button>
+
+  <div id="spinner" class="spinner" style="display:none;"></div>
+  <div id="error" class="error"></div>
+
+  <div class="result-box" id="resultBox" style="display:none;">
+    <div class="meta">
+      <span>File: <strong id="resFile"></strong></span>
+      <span class="engine">Engine: <strong id="resEngine"></strong></span>
+    </div>
+    <pre id="resText"></pre>
+  </div>
+
+  <script>
+    const API = "http://127.0.0.1:8000";
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const fileName = document.getElementById("fileName");
+    const spinner = document.getElementById("spinner");
+    const errorDiv = document.getElementById("error");
+    const resultBox = document.getElementById("resultBox");
+    let selectedFile = null;
+
+    const ALLOWED = [".png", ".jpg", ".jpeg", ".pdf"];
+
+    function isValid(file) {
+      return ALLOWED.some(ext => file.name.toLowerCase().endsWith(ext));
+    }
+
+    function selectFile(file) {
+      if (!isValid(file)) {
+        errorDiv.textContent = "Invalid file type. Use .png, .jpg, .jpeg or .pdf";
+        return;
+      }
+      errorDiv.textContent = "";
+      selectedFile = file;
+      fileName.textContent = file.name;
+      uploadBtn.disabled = false;
+    }
+
+    dropZone.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files[0]) selectFile(e.target.files[0]);
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+    });
+
+    uploadBtn.addEventListener("click", async () => {
+      if (!selectedFile) return;
+      uploadBtn.disabled = true;
+      spinner.style.display = "block";
+      errorDiv.textContent = "";
+      resultBox.style.display = "none";
+
+      const form = new FormData();
+      form.append("file", selectedFile);
+
+      try {
+        const res = await fetch(`${API}/upload`, { method: "POST", body: form });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          const msg = errData?.detail || `Server returned ${res.status}`;
+          throw new Error(msg);
+        }
+        const data = await res.json();
+
+        document.getElementById("resFile").textContent = data.filename;
+        document.getElementById("resEngine").textContent = data.engine_used;
+        document.getElementById("resText").textContent = data.text_preview || "(no text extracted)";
+        resultBox.style.display = "block";
+      } catch (err) {
+        errorDiv.textContent = "Error: " + err.message;
+      } finally {
+        spinner.style.display = "none";
+        uploadBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
