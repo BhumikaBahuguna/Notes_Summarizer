@@ -5,7 +5,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+
+# Same fallback chain as gemini_service.py — try multiple models when quota is exhausted
+GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-flash-latest",
+    "gemini-flash-lite-latest",
+    "gemini-2.5-flash-lite-preview-09-2025",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-pro",
+    "gemini-3-pro-preview",
+    "gemini-2.0-flash-001",
+    "gemma-3-27b-it",
+    "gemma-3-4b-it",
+]
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -81,6 +97,7 @@ def clean_text(raw_text: str) -> dict:
 
 
 def _clean_with_gemini(prompt: str) -> str:
+    """Try multiple Gemini models for cleaning, same fallback logic as summarization."""
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -88,11 +105,37 @@ def _clean_with_gemini(prompt: str) -> str:
             "maxOutputTokens": 8192,
         }
     }
-    response = requests.post(GEMINI_URL, json=payload, timeout=90)
-    if response.status_code != 200:
-        raise Exception(f"Gemini API error {response.status_code}: {response.text[:200]}")
-    data = response.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    errors = []
+    for model in GEMINI_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+        try:
+            print(f"    🔹 Cleaning with Gemini model: {model}...")
+            response = requests.post(url, json=payload, timeout=90)
+            if response.status_code == 200:
+                data = response.json()
+                try:
+                    result = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    print(f"    ✅ Cleaning success with {model}")
+                    return result
+                except (KeyError, IndexError) as e:
+                    errors.append(f"{model}: unexpected response format – {e}")
+                    continue
+            if response.status_code == 429:
+                errors.append(f"{model}: quota exhausted (429)")
+                print(f"    ⚠️  {model} quota exhausted, trying next...")
+                continue
+            if response.status_code >= 500:
+                errors.append(f"{model}: server error ({response.status_code})")
+                continue
+            errors.append(f"{model}: API error {response.status_code}")
+            continue
+        except requests.exceptions.Timeout:
+            errors.append(f"{model}: timed out")
+            continue
+        except Exception as e:
+            errors.append(f"{model}: {e}")
+            continue
+    raise Exception(f"All Gemini models failed for cleaning: {'; '.join(errors)}")
 
 
 def _clean_with_groq(prompt: str) -> str:
