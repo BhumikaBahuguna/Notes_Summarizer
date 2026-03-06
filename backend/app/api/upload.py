@@ -57,8 +57,8 @@ async def upload_file(
     result = extract_text(file_path)
     raw_text = result["text"]
 
-    # AI-powered text cleaning
-    clean_result = clean_text(raw_text)
+    # AI-powered text cleaning (async)
+    clean_result = await clean_text(raw_text)
     cleaned = clean_result["cleaned_text"]
 
     response = {
@@ -72,7 +72,7 @@ async def upload_file(
     # Summarization (if requested)
     if summarize and summarize in ("brief", "medium", "detailed"):
         if cleaned and cleaned.strip():
-            summary_result = summarize_text(cleaned, mode=summarize)
+            summary_result = await summarize_text(cleaned, mode=summarize)
             response["summary"] = summary_result.get("summary")
             response["summarizer"] = summary_result.get("summarizer")
             response["summary_mode"] = summary_result.get("mode")

@@ -1,4 +1,5 @@
-import requests
+import asyncio
+import httpx
 
 # Using a free, no-key-required HuggingFace Inference API model
 # facebook/bart-large-cnn is one of the best summarization models available
@@ -6,8 +7,8 @@ HF_MODEL = "facebook/bart-large-cnn"
 HF_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
 
 
-def summarize_huggingface(text: str, mode: str) -> str:
-    """Summarize text using HuggingFace Inference API (free, no key needed).
+async def summarize_huggingface(text: str, mode: str) -> str:
+    """Summarize text using HuggingFace Inference API (free, no key needed). Async.
 
     Note: BART-large-CNN has a 1024 token input limit (~3000 chars).
     For longer texts, we chunk and summarize each chunk.
@@ -28,34 +29,42 @@ def summarize_huggingface(text: str, mode: str) -> str:
     chunks = _chunk_text(text, max_chars=2500)
     summaries = []
 
-    for i, chunk in enumerate(chunks):
-        payload = {
-            "inputs": chunk,
-            "parameters": {
-                "min_length": min_len,
-                "max_length": max_len,
-                "do_sample": False,
+    async with httpx.AsyncClient() as client:
+        for i, chunk in enumerate(chunks):
+            payload = {
+                "inputs": chunk,
+                "parameters": {
+                    "min_length": min_len,
+                    "max_length": max_len,
+                    "do_sample": False,
+                },
             }
-        }
 
-        response = requests.post(HF_URL, json=payload, timeout=120)
+            response = await client.post(HF_URL, json=payload, timeout=45)
 
-        if response.status_code == 503:
-            # Model is loading, retry once after wait
-            import time
-            wait_time = response.json().get("estimated_time", 30)
-            print(f"  ⏳ HuggingFace model loading, waiting {wait_time:.0f}s...")
-            time.sleep(min(wait_time, 60))
-            response = requests.post(HF_URL, json=payload, timeout=120)
+            if response.status_code == 503:
+                # Model is loading, retry once after wait
+                wait_time = response.json().get("estimated_time", 20)
+                print(
+                    f"  ⏳ HuggingFace model loading, waiting "
+                    f"{min(wait_time, 30):.0f}s..."
+                )
+                await asyncio.sleep(min(wait_time, 30))
+                response = await client.post(HF_URL, json=payload, timeout=45)
 
-        if response.status_code != 200:
-            raise Exception(f"HuggingFace API error {response.status_code}: {response.text[:300]}")
+            if response.status_code != 200:
+                raise Exception(
+                    f"HuggingFace API error {response.status_code}: "
+                    f"{response.text[:300]}"
+                )
 
-        data = response.json()
-        if isinstance(data, list) and len(data) > 0:
-            summaries.append(data[0].get("summary_text", ""))
-        else:
-            raise Exception(f"Unexpected HuggingFace response: {str(data)[:200]}")
+            data = response.json()
+            if isinstance(data, list) and len(data) > 0:
+                summaries.append(data[0].get("summary_text", ""))
+            else:
+                raise Exception(
+                    f"Unexpected HuggingFace response: {str(data)[:200]}"
+                )
 
     return "\n\n".join(summaries).strip()
 
@@ -85,8 +94,8 @@ def _chunk_text(text: str, max_chars: int = 2500) -> list:
         if cut == -1:
             cut = max_chars
 
-        chunks.append(text[:cut + 1].strip())
-        text = text[cut + 1:].strip()
+        chunks.append(text[: cut + 1].strip())
+        text = text[cut + 1 :].strip()
 
     return chunks
 
