@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OCR Test UI</title>
+  <title>Notes Summarizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -184,10 +185,114 @@
       color: #4ecdc4;
       margin-left: 8px;
     }
+
+    /* Features Section */
+    .features-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #2a2a2a;
+    }
+    .features-title {
+      font-size: 1rem;
+      color: #6c63ff;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+    .feature-btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .feature-btns button {
+      padding: 10px 20px;
+      background: #1a1a1a;
+      color: #6c63ff;
+      border: 1px solid #6c63ff;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .feature-btns button:hover {
+      background: #6c63ff;
+      color: #fff;
+    }
+    .feature-btns button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .quiz-difficulty {
+      margin: 15px 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .quiz-difficulty button {
+      padding: 8px 16px;
+      background: #222;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .quiz-difficulty button.selected {
+      background: #4ecdc4;
+      color: #000;
+      border-color: #4ecdc4;
+    }
+    .quiz-difficulty button:hover:not(.selected) {
+      border-color: #4ecdc4;
+      color: #ccc;
+    }
+
+    .feature-result {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 15px;
+    }
+
+    .bullet-list { margin: 10px 0; }
+    .bullet-list .section-group { margin-bottom: 15px; }
+    .bullet-list .section-name { color: #6c63ff; font-weight: 600; margin-bottom: 8px; }
+    .bullet-list ul { list-style: none; margin-left: 15px; }
+    .bullet-list li { margin-bottom: 6px; line-height: 1.5; }
+    .bullet-list li:before { content: "• "; color: #4ecdc4; margin-right: 8px; }
+
+    .question-item { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #2a2a2a; }
+    .question-item:last-child { border-bottom: none; }
+    .question-text { font-weight: 600; color: #fff; margin-bottom: 8px; }
+    .answer-text { color: #c0c0c0; margin-left: 15px; line-height: 1.6; }
+
+    .mcq-question { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid #2a2a2a; }
+    .mcq-question:last-child { border-bottom: none; }
+    .mcq-number { color: #6c63ff; font-weight: 600; margin-bottom: 8px; }
+    .mcq-text { color: #fff; margin-bottom: 12px; font-weight: 500; }
+    .mcq-options { margin-bottom: 12px; margin-left: 15px; }
+    .mcq-option { margin-bottom: 8px; padding: 8px 12px; background: #222; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+    .mcq-option:hover { background: #2a2a2a; }
+    .mcq-option.selected { background: #6c63ff; color: #fff; }
+    .mcq-option.correct { background: #27ae60; color: #fff; }
+    .mcq-option.wrong { background: #e74c3c; color: #fff; }
+    .mcq-explanation { margin-top: 10px; padding: 10px 15px; background: #1a1a1a; border-left: 3px solid #6c63ff; font-size: 0.9rem; line-height: 1.5; color: #c0c0c0; }
+
+    .video-item { margin-bottom: 15px; padding: 15px; background: #1a1a1a; border-radius: 6px; border: 1px solid #2a2a2a; }
+    .video-title { color: #6c63ff; font-weight: 600; margin-bottom: 6px; }
+    .video-desc { color: #aaa; font-size: 0.9rem; margin-bottom: 10px; }
+    .video-link { display: inline-block; padding: 8px 16px; background: #6c63ff; color: #fff; text-decoration: none; border-radius: 4px; font-size: 0.85rem; transition: opacity 0.15s; }
+    .video-link:hover { opacity: 0.85; }
+
+    .mermaid-container { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 20px; margin-top: 15px; overflow-x: auto; }
+    .mermaid { display: flex; justify-content: center; }
   </style>
 </head>
 <body>
-  <h1>📝 OCR + Summarizer Test</h1>
+  <h1>📝 Notes Summarizer</h1>
 
   <div class="upload-area" id="dropZone">
     <p>Click or drag & drop a file here</p>
@@ -246,6 +351,67 @@
       <pre id="resRawText"></pre>
       <button class="toggle-btn" id="backFromRawBtn">← Back to Cleaned Text</button>
     </div>
+
+    <!-- Features Section -->
+    <div class="features-section" id="featuresSection" style="display:none;">
+      <div class="features-title">📚 Study Tools</div>
+      <div class="feature-btns">
+        <button class="feature-btn" data-feature="cheat-sheet">📋 Cheat Sheet</button>
+        <button class="feature-btn" data-feature="questions">❓ Important Questions</button>
+        <button class="feature-btn" data-feature="quiz">🎯 MCQ Quiz</button>
+        <button class="feature-btn" data-feature="youtube">▶️ YouTube Learning</button>
+        <button class="feature-btn" data-feature="diagram">📊 Diagram</button>
+      </div>
+
+      <!-- Quiz Difficulty Selector (shown only for quiz) -->
+      <div id="quizDifficultySelector" style="display:none;">
+        <div style="margin-bottom: 10px; color: #aaa; font-size: 0.9rem;">Select difficulty level:</div>
+        <div class="quiz-difficulty">
+          <button data-level="beginner" class="selected">Beginner</button>
+          <button data-level="intermediate">Intermediate</button>
+          <button data-level="full_prepared">Full Prepared</button>
+        </div>
+        <button id="generateQuizBtn" style="padding: 10px 20px; background: #4ecdc4; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px;">Generate Quiz</button>
+      </div>
+
+      <!-- Feature Results -->
+      <div id="featureResult" style="display:none;">
+        <!-- Cheat Sheet Result -->
+        <div id="cheatSheetResult" class="feature-result" style="display:none;">
+          <div class="section-title">Cheat Sheet</div>
+          <div id="cheatSheetContent" class="bullet-list"></div>
+          <button class="toggle-btn" style="margin-top: 15px;" onclick="document.getElementById('featureResult').style.display='none';">← Back to Tools</button>
+        </div>
+
+        <!-- Questions Result -->
+        <div id="questionsResult" class="feature-result" style="display:none;">
+          <div class="section-title">Important Questions</div>
+          <div id="questionsContent"></div>
+          <button class="toggle-btn" style="margin-top: 15px;" onclick="document.getElementById('featureResult').style.display='none';">← Back to Tools</button>
+        </div>
+
+        <!-- Quiz Result -->
+        <div id="quizResult" class="feature-result" style="display:none;">
+          <div class="section-title">MCQ Quiz</div>
+          <div id="quizContent"></div>
+          <button class="toggle-btn" style="margin-top: 15px;" onclick="document.getElementById('featureResult').style.display='none';">← Back to Tools</button>
+        </div>
+
+        <!-- YouTube Result -->
+        <div id="youtubeResult" class="feature-result" style="display:none;">
+          <div class="section-title">Recommended Learning Videos</div>
+          <div id="youtubeContent"></div>
+          <button class="toggle-btn" style="margin-top: 15px;" onclick="document.getElementById('featureResult').style.display='none';">← Back to Tools</button>
+        </div>
+
+        <!-- Diagram Result -->
+        <div id="diagramResult" class="feature-result" style="display:none;">
+          <div class="section-title">Diagrammatic Representation</div>
+          <div id="diagramContent"></div>
+          <button class="toggle-btn" style="margin-top: 15px;" onclick="document.getElementById('featureResult').style.display='none';">← Back to Tools</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -259,8 +425,14 @@
     const statusMsg = document.getElementById("statusMsg");
     const errorDiv = document.getElementById("error");
     const resultBox = document.getElementById("resultBox");
+    const featuresSection = document.getElementById("featuresSection");
+
+    mermaid.initialize({ startOnLoad: false, securityLevel: "loose" });
+
     let selectedFile = null;
     let selectedMode = "medium";
+    let extractedText = "";
+    let selectedQuizLevel = "beginner";
 
     const ALLOWED = [".png", ".jpg", ".jpeg", ".pdf"];
 
@@ -306,6 +478,7 @@
       statusMsg.textContent = withSummary ? "Extracting text & summarizing..." : "Extracting text...";
       errorDiv.textContent = "";
       resultBox.style.display = "none";
+      featuresSection.style.display = "none";
 
       const form = new FormData();
       form.append("file", selectedFile);
@@ -322,6 +495,7 @@
         document.getElementById("resFile").textContent = data.filename;
         document.getElementById("resEngine").textContent = data.engine_used;
         document.getElementById("resText").textContent = data.extracted_text || "(no text extracted)";
+        extractedText = data.extracted_text || data.raw_text || "";
 
         // Show raw OCR text and cleaner badge
         const showRawBtn = document.getElementById("showRawBtn");
@@ -365,6 +539,7 @@
         }
 
         resultBox.style.display = "block";
+        featuresSection.style.display = "block";
       } catch (err) {
         errorDiv.textContent = "Error: " + err.message;
       } finally {
@@ -398,6 +573,221 @@
       document.getElementById("rawView").style.display = "none";
       document.getElementById("originalView").style.display = "block";
     });
+
+    // Feature buttons
+    document.querySelectorAll(".feature-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const feature = btn.dataset.feature;
+        if (feature === "quiz") {
+          document.getElementById("quizDifficultySelector").style.display = "block";
+          document.getElementById("featureResult").style.display = "none";
+        } else {
+          await generateFeature(feature);
+        }
+      });
+    });
+
+    // Quiz difficulty buttons
+    document.querySelectorAll(".quiz-difficulty button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".quiz-difficulty button").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        selectedQuizLevel = btn.dataset.level;
+      });
+    });
+
+    // Generate quiz button
+    document.getElementById("generateQuizBtn").addEventListener("click", async () => {
+      await generateFeature("quiz");
+    });
+
+    async function generateFeature(feature) {
+      if (!extractedText) {
+        errorDiv.textContent = "No text to process. Please extract text first.";
+        return;
+      }
+
+      spinner.style.display = "block";
+      statusMsg.textContent = "Generating " + feature + "...";
+      errorDiv.textContent = "";
+      document.getElementById("featureResult").style.display = "none";
+
+      try {
+        let endpoint = API + "/" + feature;
+        let payload = { text: extractedText };
+        if (feature === "quiz") {
+          payload.level = selectedQuizLevel;
+        }
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          throw new Error(errData?.detail || "Server returned " + res.status);
+        }
+
+        const data = await res.json();
+        await renderFeature(feature, data);
+        document.getElementById("featureResult").style.display = "block";
+        document.getElementById("quizDifficultySelector").style.display = "none";
+      } catch (err) {
+        errorDiv.textContent = "Error: " + err.message;
+      } finally {
+        spinner.style.display = "none";
+        statusMsg.textContent = "";
+      }
+    }
+
+    async function renderFeature(feature, data) {
+      // Hide ALL previous result divs to prevent cascading
+      document.getElementById("cheatSheetResult").style.display = "none";
+      document.getElementById("questionsResult").style.display = "none";
+      document.getElementById("quizResult").style.display = "none";
+      document.getElementById("youtubeResult").style.display = "none";
+      document.getElementById("diagramResult").style.display = "none";
+
+      // Show only the selected feature
+      if (feature === "cheat-sheet") {
+        renderCheatSheet(data.bullets);
+      } else if (feature === "questions") {
+        renderQuestions(data.questions);
+      } else if (feature === "quiz") {
+        renderQuiz(data.quiz);
+      } else if (feature === "youtube") {
+        renderYouTube(data.videos);
+      } else if (feature === "diagram") {
+        await renderDiagram(data);
+      }
+    }
+
+    function renderCheatSheet(bullets) {
+      let html = "";
+      if (Array.isArray(bullets)) {
+        bullets.forEach(section => {
+          html += "<div class='section-group'><div class='section-name'>" + escapeHtml(section.section) + "</div><ul>";
+          if (Array.isArray(section.bullets)) {
+            section.bullets.forEach(bullet => {
+              html += "<li>" + escapeHtml(bullet) + "</li>";
+            });
+          }
+          html += "</ul></div>";
+        });
+      }
+      document.getElementById("cheatSheetContent").innerHTML = html;
+      document.getElementById("cheatSheetResult").style.display = "block";
+    }
+
+    function renderQuestions(questions) {
+      let html = "";
+      if (Array.isArray(questions)) {
+        questions.forEach((q, idx) => {
+          html += "<div class='question-item'><div class='question-text'>" + (idx + 1) + ". " + escapeHtml(q.question) + "</div><div class='answer-text'><strong>Answer:</strong> " + escapeHtml(q.answer) + "</div></div>";
+        });
+      }
+      document.getElementById("questionsContent").innerHTML = html;
+      document.getElementById("questionsResult").style.display = "block";
+    }
+
+    function renderQuiz(quiz) {
+      let html = "";
+      if (Array.isArray(quiz)) {
+        quiz.forEach((q, idx) => {
+          const qId = "q-" + idx;
+          html += "<div class='mcq-question'><div class='mcq-number'>Q" + (idx + 1) + "</div><div class='mcq-text'>" + escapeHtml(q.question) + "</div><div class='mcq-options'>";
+          if (Array.isArray(q.options)) {
+            q.options.forEach((opt, oIdx) => {
+              const optId = qId + "-" + oIdx;
+              const isCorrect = q.correct_answer && opt.startsWith(q.correct_answer);
+              html += "<div class='mcq-option' id='" + optId + "' onclick=\"selectMCQOption('" + optId + "', " + isCorrect + ", " + idx + ")\">" + escapeHtml(opt) + "</div>";
+            });
+          }
+          html += "</div><div class='mcq-explanation' id='" + qId + "-explain' style='display:none;'><strong>Explanation:</strong> " + escapeHtml(q.explanation) + "</div></div>";
+        });
+      }
+      document.getElementById("quizContent").innerHTML = html;
+      document.getElementById("quizResult").style.display = "block";
+    }
+
+    function selectMCQOption(optId, isCorrect, qIdx) {
+      const opt = document.getElementById(optId);
+      const qId = "q-" + qIdx;
+      const explain = document.getElementById(qId + "-explain");
+      document.querySelectorAll("#q-" + qIdx + " .mcq-option").forEach(o => {
+        o.classList.remove("selected", "correct", "wrong");
+      });
+      opt.classList.add("selected");
+      if (isCorrect) opt.classList.add("correct");
+      else opt.classList.add("wrong");
+      explain.style.display = "block";
+    }
+
+    function renderYouTube(videos) {
+      let html = "";
+      if (Array.isArray(videos)) {
+        videos.forEach(v => {
+          html += "<div class='video-item'><div class='video-title'>" + escapeHtml(v.title) + "</div><div class='video-desc'>" + escapeHtml(v.description) + "</div><a class='video-link' href='" + escapeHtml(v.youtube_url) + "' target='_blank'>Watch on YouTube →</a></div>";
+        });
+      }
+      document.getElementById("youtubeContent").innerHTML = html;
+      document.getElementById("youtubeResult").style.display = "block";
+    }
+
+    async function renderDiagram(data) {
+      const container = document.getElementById("diagramContent");
+      const code = sanitizeMermaidCode(data.code || "");
+      const desc = data.description ? "<p style='margin-top: 15px; color: #aaa; font-size: 0.9rem;'>" + escapeHtml(data.description) + "</p>" : "";
+
+      container.innerHTML = "<div class='mermaid-container'><div id='diagramRenderHost'></div></div>" + desc;
+      document.getElementById("diagramResult").style.display = "block";
+
+      if (!code) {
+        document.getElementById("diagramRenderHost").innerHTML = "<pre style='color:#ff8a8a;'>Diagram code was empty or invalid.</pre>";
+        return;
+      }
+
+      try {
+        const renderId = "mmd-" + Date.now();
+        const rendered = await mermaid.render(renderId, code);
+        document.getElementById("diagramRenderHost").innerHTML = rendered.svg;
+      } catch (e) {
+        document.getElementById("diagramRenderHost").innerHTML =
+          "<pre style='color:#ff8a8a;'>Unable to render diagram.\n" + escapeHtml(String(e && e.message ? e.message : e)) +
+          "\n\nCode:\n" + escapeHtml(code) + "</pre>";
+      }
+    }
+
+    function sanitizeMermaidCode(code) {
+      if (!code) return "";
+
+      let cleaned = String(code).trim();
+      cleaned = cleaned.replace(/^```(?:mermaid)?\s*/i, "").replace(/\s*```$/, "");
+      cleaned = cleaned.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n");
+      cleaned = cleaned.replace(/^mermaid\s*\n/i, "");
+      cleaned = cleaned.replace(/^mind\s+map/i, "mindmap");
+      
+      // Fix invalid Mermaid arrow syntax: |> should be |
+      cleaned = cleaned.replace(/\|>/g, "|");
+      
+      // Remove any trailing semicolons on graph declarations
+      cleaned = cleaned.replace(/^(graph\s+\w+);\s*/i, "$1\n");
+      
+      // Fix semicolon-separated lines to newline-separated (common LLM output)
+      if (cleaned.includes(";") && !cleaned.includes("\n")) {
+        cleaned = cleaned.replace(/;/g, "\n");
+      }
+
+      return cleaned.trim();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
   </script>
 </body>
 </html>

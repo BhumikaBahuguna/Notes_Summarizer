@@ -19,8 +19,15 @@ MAX_PDF_PAGES = 1950
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    summarize: Optional[str] = Form(None),  # "brief", "medium", "detailed" or None
+    summarize_level: Optional[str] = Form(None),  # "concise", "balanced", "detailed" or None
 ):
+    # Map frontend parameter names to internal summary modes
+    summary_mode_map = {
+        "concise": "brief",
+        "balanced": "medium",
+        "detailed": "detailed"
+    }
+    
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
     with open(file_path, "wb") as buffer:
@@ -70,9 +77,10 @@ async def upload_file(
     }
 
     # Summarization (if requested)
-    if summarize and summarize in ("brief", "medium", "detailed"):
+    if summarize_level and summarize_level in summary_mode_map:
+        summary_mode = summary_mode_map[summarize_level]
         if cleaned and cleaned.strip():
-            summary_result = await summarize_text(cleaned, mode=summarize)
+            summary_result = await summarize_text(cleaned, mode=summary_mode)
             response["summary"] = summary_result.get("summary")
             response["summarizer"] = summary_result.get("summarizer")
             response["summary_mode"] = summary_result.get("mode")
