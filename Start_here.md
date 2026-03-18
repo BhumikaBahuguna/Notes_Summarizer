@@ -54,7 +54,8 @@ GROQ_API_KEY=...
 
 Notes:
 - Missing Azure credentials -> OCR falls back to PaddleOCR.
-- Missing Gemini/Groq credentials -> summary can still fall back to HuggingFace.
+- Missing Groq credentials -> summary falls to Gemini, then HuggingFace.
+- Missing Gemini credentials -> summary uses Groq only, then HuggingFace.
 - First PaddleOCR run can download models and take longer.
 
 Run backend:

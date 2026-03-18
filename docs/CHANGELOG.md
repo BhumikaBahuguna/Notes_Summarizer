@@ -2,6 +2,21 @@
 
 This changelog tracks the major implemented milestones for Notes Summarizer.
 
+## 2026-03-18 - Summarization Pipeline Speed Optimization
+
+- Reordered summarization fallback: Groq first (fastest), Gemini second, HuggingFace last resort.
+- Added parallel race for medium/detailed modes: Groq and Gemini run simultaneously, fastest response wins.
+- Added single-pass direct summarization for brief mode (skips outline extraction entirely).
+- Introduced tiered validation retries: brief=0, medium=1, detailed=2.
+- Lowered API timeouts aggressively: Groq 20-50s, Gemini 30-60s (previously 60-150s).
+- Trimmed Gemini model list from 5 to 3 (removed slower 2.5 models).
+- Added outline caching: same document at different summary levels reuses the structural outline.
+- Forced outline extraction to use lightest Gemini model (`gemini-2.0-flash-lite`).
+- Files changed:
+  - `backend/app/services/summarize_pipeline.py` (rewritten)
+  - `backend/app/services/gemini_service.py` (modified)
+  - `backend/app/services/groq_service.py` (modified)
+
 ## 2026-03-18 - Documentation and Structure Sync
 
 - Updated all markdown documentation to match current code state.
@@ -70,7 +85,8 @@ This changelog tracks the major implemented milestones for Notes Summarizer.
   - Gemini primary
   - Groq fallback
 - Integrated summary pipeline in `summarize_pipeline.py`:
-  - Gemini -> Groq -> HuggingFace
+  - Originally: Gemini -> Groq -> HuggingFace
+  - Now superseded by speed-optimized pipeline (see 2026-03-18 entry)
 
 ## Ongoing
 

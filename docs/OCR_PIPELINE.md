@@ -24,7 +24,9 @@ Upload file
 -> Validate size and page count
 -> OCR extraction (Azure first, Paddle fallback)
 -> AI cleaning of OCR output (Gemini first, Groq fallback)
--> Optional summary generation (Gemini -> Groq -> HuggingFace)
+-> Optional summary generation:
+     brief:           single-pass Groq (-> Gemini -> HuggingFace)
+     medium/detailed:  parallel race Groq vs Gemini (-> HuggingFace)
 -> Return JSON response to frontend
 ```
 
@@ -81,10 +83,20 @@ Modes:
 - balanced -> medium
 - detailed -> detailed
 
-Fallback chain:
-1. Gemini
-2. Groq
-3. HuggingFace
+Strategy (optimized for speed):
+- **Brief mode**: Single-pass direct summarization (no outline extraction).
+  Groq first -> Gemini -> HuggingFace.
+- **Medium/Detailed mode**: Two-pass architecture (outline -> constrained summary).
+  Groq and Gemini race in parallel — whichever responds first wins.
+  HuggingFace is the last resort fallback.
+
+Tiered validation retries:
+- brief: 0 retries
+- medium: 1 retry
+- detailed: 2 retries
+
+Outline caching: Outlines are cached in memory per document hash, so
+switching between summary levels reuses the same outline.
 
 Response fields when requested:
 - `summary`
@@ -113,7 +125,8 @@ Conditionally returned:
 |---|---|
 | Azure OCR outage/error | PaddleOCR fallback |
 | Gemini cleaning failure | Groq fallback |
-| Gemini/Groq summary failure | HuggingFace fallback |
+| Groq summary failure | Parallel race with Gemini; HuggingFace last resort |
+| Gemini summary failure | Parallel race with Groq; HuggingFace last resort |
 | Large or invalid files | Explicit validation + HTTP errors |
 
 ## 8) Integration With Frontend

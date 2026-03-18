@@ -155,10 +155,12 @@ Fallback:
 
 Service: `services/summarize_pipeline.py`
 
-Fallback:
-1. Gemini
-2. Groq
-3. HuggingFace
+Strategy (optimized for speed):
+- Brief: single-pass Groq -> Gemini -> HuggingFace
+- Medium/Detailed: parallel race Groq vs Gemini -> HuggingFace
+
+Tiered retries: brief=0, medium=1, detailed=2.
+Outline caching across summary levels per document.
 
 ### Stage E - Feature Generation
 
@@ -279,7 +281,8 @@ Tutor request body:
 |---|---|---|
 | OCR | Azure | PaddleOCR |
 | Text cleaning | Gemini | Groq |
-| Summary | Gemini | Groq, then HuggingFace |
+| Summary (brief) | Groq (single-pass) | Gemini, then HuggingFace |
+| Summary (medium/detailed) | Groq vs Gemini (parallel race) | HuggingFace |
 | Study mode generation | Gemini | Groq |
 
 ## 11) Operational Notes

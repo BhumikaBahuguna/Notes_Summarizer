@@ -25,30 +25,49 @@ GROQ_MODELS_SUMMARY = {
 # PUBLIC API
 # ===================================================================
 
-async def summarize_groq(text: str, mode: str) -> str:
-    """Two-pass summarization: extraction → constrained summary → validation.
+async def summarize_groq(
+    text: str, mode: str, *, cached_outline: str | None = None,
+) -> str:
+    """Summarization with tiered strategy per mode.
+
+    - brief:    single-pass (no outline), 0 retries
+    - medium:   two-pass (outline + summary), 1 retry
+    - detailed: two-pass (outline + summary), 2 retries
 
     Args:
         text: The cleaned OCR text.
         mode: 'brief', 'medium', or 'detailed'.
+        cached_outline: Reuse this outline instead of re-extracting.
 
     Returns:
         Complete, validated summary string.
     """
-    # --- Pass 1: structural extraction ---
-    print("  📋 Pass 1: Extracting document structure (Groq)...")
-    outline = await _extract_outline(text)
+    max_retries = {"brief": 0, "medium": 1, "detailed": 2}.get(mode, 1)
+
+    # --- BRIEF: single-pass, no outline ---
+    if mode == "brief":
+        print(f"  📝 Single-pass brief summary (Groq)...")
+        summary, _ = await _generate_direct_summary(text, mode)
+        print(f"  ✅ Brief summary complete ({len(summary.split())} words) [Groq]")
+        return summary
+
+    # --- MEDIUM / DETAILED: two-pass ---
+    if cached_outline:
+        print("  📋 Using cached outline (Groq)")
+        outline = cached_outline
+    else:
+        print("  📋 Pass 1: Extracting document structure (Groq)...")
+        outline = await _extract_outline(text)
     section_labels = _parse_section_labels(outline)
     print(f"  📋 Extracted {len(section_labels)} sections from outline")
 
-    # --- Pass 2: constrained summarization ---
     print(f"  📝 Pass 2: Generating {mode} summary (Groq)...")
     summary, was_truncated = await _generate_constrained_summary(
         text, outline, mode
     )
 
-    # --- Validation + repair loop (max 2 retries) ---
-    for attempt in range(2):
+    # --- Validation + repair loop (tiered retries) ---
+    for attempt in range(max_retries):
         validation = _validate_summary(
             summary, section_labels, text, mode, was_truncated
         )
@@ -112,7 +131,7 @@ async def _extract_outline(text: str) -> str:
         models=GROQ_MODELS_OUTLINE,
         temperature=0.1,
         max_tokens=_estimate_outline_tokens(text),
-        timeout=60,
+        timeout=20,
         task_label="outline extraction",
     )
     return result
@@ -292,8 +311,49 @@ async def _generate_constrained_summary(
         models=models,
         temperature=0.15,
         max_tokens=_max_tokens(text, mode),
-        timeout=90,
+        timeout={"brief": 20, "medium": 35, "detailed": 50}.get(mode, 35),
         task_label=f"{mode} summary",
+    )
+
+
+# ===================================================================
+# SINGLE-PASS DIRECT SUMMARY (for brief mode — no outline needed)
+# ===================================================================
+
+_DIRECT_SYSTEM = (
+    "You are a summariser. Write a short, flowing paragraph that mentions "
+    "every key topic by name with its single most important fact. "
+    "Do NOT use bullet points. Do NOT add commentary or conclusions."
+)
+
+_DIRECT_USER = """\
+Summarize the following document in a short, flowing paragraph.
+Keep it under {target} words.
+
+DOCUMENT:
+\"\"\"
+{text}
+\"\"\"
+
+BRIEF SUMMARY:"""
+
+
+async def _generate_direct_summary(
+    text: str, mode: str,
+) -> tuple[str, bool]:
+    """Single-pass summary without outline extraction."""
+    word_count = len(text.split())
+    target = max(20, int(word_count * 0.25))
+    user_prompt = _DIRECT_USER.replace("{text}", text).replace("{target}", str(target))
+    models = GROQ_MODELS_SUMMARY.get("brief", GROQ_MODELS_SUMMARY["medium"])
+    return await _call_groq(
+        system=_DIRECT_SYSTEM,
+        user=user_prompt,
+        models=models,
+        temperature=0.15,
+        max_tokens=max(2048, min(word_count, 8192)),
+        timeout=20,
+        task_label="brief direct summary",
     )
 
 
@@ -432,7 +492,7 @@ async def _repair_summary(
         models=models,
         temperature=0.10,
         max_tokens=_max_tokens(text, mode),
-        timeout=90,
+        timeout={"brief": 20, "medium": 35, "detailed": 50}.get(mode, 35),
         task_label=f"{mode} repair",
     )
 

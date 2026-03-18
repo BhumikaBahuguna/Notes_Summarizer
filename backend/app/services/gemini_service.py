@@ -7,13 +7,16 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Model fallback list — ordered by quality / availability.
+# Model fallback list — trimmed for speed.  Ordered by quality.
 GEMINI_MODELS = [
-    "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-2.5-flash-lite",
     "gemini-2.0-flash-lite",
     "gemma-3-4b-it",
+]
+
+# Outline extraction only needs the lightest/fastest model.
+GEMINI_MODELS_OUTLINE = [
+    "gemini-2.0-flash-lite",
 ]
 
 
@@ -28,31 +31,49 @@ def _gemini_url(model: str) -> str:
 # PUBLIC API
 # ===================================================================
 
-async def summarize_gemini(text: str, mode: str) -> str:
-    """Two-pass summarization: extraction → constrained summary → validation.
+async def summarize_gemini(
+    text: str, mode: str, *, cached_outline: str | None = None,
+) -> str:
+    """Summarization with tiered strategy per mode.
+
+    - brief:    single-pass (no outline), 0 retries
+    - medium:   two-pass (outline + summary), 1 retry
+    - detailed: two-pass (outline + summary), 2 retries
 
     Args:
         text: The cleaned OCR text.
         mode: 'brief', 'medium', or 'detailed'.
+        cached_outline: Reuse this outline instead of re-extracting.
 
     Returns:
-        Complete, validated summary string.
+        Complete summary string.
     """
-    # --- Pass 1: structural extraction ---
-    print("  📋 Pass 1: Extracting document structure...")
-    outline = await _extract_outline(text)
-    section_labels = _parse_section_labels(outline)
-    n_sections = len(section_labels)
-    print(f"  📋 Extracted {n_sections} sections from outline")
+    max_retries = {"brief": 0, "medium": 1, "detailed": 2}.get(mode, 1)
 
-    # --- Pass 2: constrained summarization ---
+    # --- BRIEF: single-pass, no outline ---
+    if mode == "brief":
+        print(f"  📝 Single-pass brief summary (Gemini)...")
+        summary, _ = await _generate_direct_summary(text, mode)
+        print(f"  ✅ Brief summary complete ({len(summary.split())} words)")
+        return summary
+
+    # --- MEDIUM / DETAILED: two-pass ---
+    if cached_outline:
+        print("  📋 Using cached outline")
+        outline = cached_outline
+    else:
+        print("  📋 Pass 1: Extracting document structure...")
+        outline = await _extract_outline(text)
+    section_labels = _parse_section_labels(outline)
+    print(f"  📋 Extracted {len(section_labels)} sections from outline")
+
     print(f"  📝 Pass 2: Generating {mode} summary...")
     summary, was_truncated = await _generate_constrained_summary(
         text, outline, mode
     )
 
-    # --- Validation + repair loop (max 2 retries) ---
-    for attempt in range(2):
+    # --- Validation + repair loop (tiered retries) ---
+    for attempt in range(max_retries):
         validation = _validate_summary(
             summary, section_labels, text, mode, was_truncated
         )
@@ -112,8 +133,9 @@ async def _extract_outline(text: str) -> str:
         prompt,
         temperature=0.1,
         max_tokens=_estimate_outline_tokens(text),
-        timeout=90,
+        timeout=30,
         task_label="outline extraction",
+        models=GEMINI_MODELS_OUTLINE,
     )
     return result
 
@@ -278,13 +300,47 @@ async def _generate_constrained_summary(
 ) -> tuple[str, bool]:
     """Pass 2: generate summary. Returns (summary, was_truncated)."""
     prompt = _build_constrained_prompt(text, outline, mode)
-    timeout = {"brief": 90, "medium": 120, "detailed": 150}.get(mode, 120)
+    timeout = {"brief": 30, "medium": 45, "detailed": 60}.get(mode, 45)
     return await _call_gemini(
         prompt,
         temperature=0.15,
         max_tokens=_max_tokens(text, mode),
         timeout=timeout,
         task_label=f"{mode} summary",
+    )
+
+
+# ===================================================================
+# SINGLE-PASS DIRECT SUMMARY (for brief mode — no outline needed)
+# ===================================================================
+
+_DIRECT_PROMPT = """\
+Summarize the following document in a short, flowing paragraph.
+Mention every key topic by name with its single most important fact.
+Do NOT use bullet points. Do NOT add commentary or conclusions.
+Keep it under {target} words.
+
+DOCUMENT:
+\"\"\"
+{text}
+\"\"\"
+
+BRIEF SUMMARY:"""
+
+
+async def _generate_direct_summary(
+    text: str, mode: str,
+) -> tuple[str, bool]:
+    """Single-pass summary without outline extraction."""
+    word_count = len(text.split())
+    target = max(20, int(word_count * 0.25))
+    prompt = _DIRECT_PROMPT.replace("{text}", text).replace("{target}", str(target))
+    return await _call_gemini(
+        prompt,
+        temperature=0.15,
+        max_tokens=max(2048, min(word_count, 8192)),
+        timeout=30,
+        task_label="brief direct summary",
     )
 
 
@@ -420,7 +476,7 @@ async def _repair_summary(
         f"CORRECTED {mode.upper()} SUMMARY:"
     )
 
-    timeout = {"brief": 90, "medium": 120, "detailed": 150}.get(mode, 120)
+    timeout = {"brief": 30, "medium": 45, "detailed": 60}.get(mode, 45)
     return await _call_gemini(
         prompt,
         temperature=0.10,
@@ -440,6 +496,7 @@ async def _call_gemini(
     max_tokens: int,
     timeout: float,
     task_label: str,
+    models: list[str] | None = None,
 ) -> tuple[str, bool]:
     """Call Gemini with model fallback. Returns (text, was_truncated).
 
@@ -455,9 +512,10 @@ async def _call_gemini(
         },
     }
 
+    use_models = models or GEMINI_MODELS
     errors = []
     async with httpx.AsyncClient() as client:
-        for model in GEMINI_MODELS:
+        for model in use_models:
             url = _gemini_url(model)
             try:
                 print(f"    🔹 [{task_label}] Trying {model}...")

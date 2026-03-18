@@ -8,7 +8,8 @@ It takes uploaded notes (PDF/images), runs OCR with fallback, cleans noisy OCR t
 
 - OCR extraction with fallback: Azure OCR -> PaddleOCR
 - AI text cleaning with fallback: Gemini -> Groq
-- Summary generation with fallback: Gemini -> Groq -> HuggingFace
+- Summary generation: Groq primary (parallel race with Gemini for medium/detailed), HuggingFace last resort
+- Single-pass brief summaries, two-pass with validation for medium/detailed
 - Multiple study outputs: summary, cheat sheet, questions, quiz, videos, and Mermaid diagrams
 - Advanced Study Mode with mode-specific feature sets and an AI tutor
 - React frontend with stage-based navigation and progress feedback
@@ -21,7 +22,9 @@ Upload file
 -> Validate size/pages
 -> OCR (Azure -> Paddle fallback)
 -> Text cleaning (Gemini -> Groq fallback)
--> Optional summary (Gemini -> Groq -> HuggingFace fallback)
+-> Optional summary:
+     brief:           single-pass Groq (-> Gemini -> HuggingFace)
+     medium/detailed:  parallel race Groq vs Gemini (-> HuggingFace)
 -> Generate study features on demand
 ```
 
