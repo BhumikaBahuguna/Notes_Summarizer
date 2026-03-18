@@ -1,79 +1,120 @@
 # Notes Summarizer
 
-AI-powered system that extracts text from handwritten and printed notes using Azure OCR with PaddleOCR fallback, cleans OCR artifacts using AI, and generates structured summaries.
+Notes Summarizer is a full-stack AI study assistant.
 
----
+It takes uploaded notes (PDF/images), runs OCR with fallback, cleans noisy OCR text, generates summaries, and creates interactive study materials including cheat sheets, expected questions, quizzes, diagrams, videos, and an Advanced Study Mode workflow.
 
-## Features
+## Core Capabilities
 
-- **Hybrid OCR pipeline**: Azure Form Recognizer (primary) → PaddleOCR (local fallback)
-- **AI text cleaning**: Removes page numbers, signatures, garbage characters (Gemini → Groq)
-- **Multi-engine summarization**: Gemini → Groq → HuggingFace fallback chain
-- **Three summary modes**: Brief, Medium, Detailed
-- Handles handwritten + printed notes
-- PDF and image support (.png, .jpg, .jpeg, .pdf)
-- Upload validation (450 MB max, 1950 pages max for PDFs)
-- Real-time REST API via FastAPI
+- OCR extraction with fallback: Azure OCR -> PaddleOCR
+- AI text cleaning with fallback: Gemini -> Groq
+- Summary generation with fallback: Gemini -> Groq -> HuggingFace
+- Multiple study outputs: summary, cheat sheet, questions, quiz, videos, and Mermaid diagrams
+- Advanced Study Mode with mode-specific feature sets and an AI tutor
+- React frontend with stage-based navigation and progress feedback
+- FastAPI backend with dedicated routers for upload, features, and study mode
 
----
+## End-to-End Pipeline
 
-## Pipeline
-
+```text
+Upload file
+-> Validate size/pages
+-> OCR (Azure -> Paddle fallback)
+-> Text cleaning (Gemini -> Groq fallback)
+-> Optional summary (Gemini -> Groq -> HuggingFace fallback)
+-> Generate study features on demand
 ```
-Upload → Validate → OCR (Azure → PaddleOCR) → AI Clean (Gemini → Groq) → Summarize (Gemini → Groq → HuggingFace)
-```
-
----
 
 ## Tech Stack
 
-- **Backend**: FastAPI, Python 3.12
-- **OCR**: Azure Document Intelligence, PaddleOCR, pypdfium2
-- **AI/LLM**: Google Gemini 2.0 Flash, Groq (LLaMA 3.3 70B), HuggingFace (BART-large-CNN)
-- **Image Processing**: OpenCV
-
----
+- Frontend: React, Vite, React Router, Axios, Mermaid
+- Backend: FastAPI, Uvicorn, Pydantic
+- OCR: Azure Document Intelligence, PaddleOCR, pypdfium2
+- AI providers: Gemini, Groq, HuggingFace
 
 ## Quick Start
 
+### 1) Backend
+
 ```bash
 cd backend
-~/.pyenv/versions/3.12.12/bin/python3.12 -m venv venv
-source venv/bin/activate.fish   # or source venv/bin/activate for bash
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+# source venv/bin/activate
+
 pip install -r requirements.txt
-# Create .env with API keys (see Start_here.md)
 uvicorn app.main:app --reload --port 8000
 ```
 
-> See [Start_here.md](Start_here.md) for full setup guide including pyenv installation.
+### 2) Frontend
 
----
+Open another terminal:
 
-## API
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-| Method | Endpoint  | Description |
-|--------|-----------|-------------|
-| GET    | `/`       | Health check |
-| POST   | `/upload` | Upload file for OCR + clean + summarize |
+Frontend runs on the Vite dev URL (typically `http://localhost:5173`).
+Backend runs on `http://127.0.0.1:8000`.
 
-### POST /upload
+## Environment Variables
 
-**Body**: `multipart/form-data` with `file` (required) and `summarize` (optional: `"brief"`, `"medium"`, `"detailed"`)
+Create `backend/.env` with values as available:
 
-**Response fields**: `filename`, `engine_used`, `raw_text`, `extracted_text` (cleaned), `cleaner`, and optionally `summary`, `summarizer`, `summary_mode`
+```env
+AZURE_ENDPOINT=...
+AZURE_KEY=...
+GEMINI_API_KEY=...
+GROQ_API_KEY=...
+```
 
----
+The app is designed with fallbacks and can still operate with partial credentials.
 
-## Status
+## API Overview
 
-- OCR pipeline stable
-- AI text cleaning integrated
-- Summarization with 3-engine fallback working
-- Test UI available (`test_ui.html`)
+### System
 
----
+- GET `/` - health check
+- POST `/upload` - OCR, cleaning, optional summary
 
-## Author
+### Standard Feature Endpoints
 
-Bhumika Bahuguna
+- POST `/cheat-sheet`
+- POST `/questions`
+- POST `/quiz`
+- POST `/youtube`
+- POST `/diagram`
+
+### Advanced Study Mode Endpoints
+
+- POST `/study-mode/generate`
+- POST `/study-mode/ai-tutor`
+
+## Frontend Routes
+
+- `/` - Home
+- `/workspace` - upload + main study materials
+- `/study-mode` - select one of 3 study modes
+- `/study-mode/:modeId` - mode-specific feature list
+- `/study-mode/:modeId/:featureId` - selected feature workspace
+
+## Documentation Map
+
+- `Start_here.md` - complete setup guide (backend + frontend)
+- `docs/OCR_PIPELINE.md` - detailed OCR/cleaning/summarization flow
+- `docs/PROJECT_STRUCTURE_AND_FLOW.md` - architecture, stages, and file-level mapping
+- `docs/CHANGELOG.md` - implementation history and release notes
+
+## Project Status
+
+The project is active and includes:
+
+- production-like frontend flow
+- integrated backend feature APIs
+- advanced mode-based study experience
+- updated docs aligned with current implementation
 

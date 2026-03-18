@@ -1,107 +1,147 @@
-# OCR Pipeline — Real-Time Notes Summarizer
+# OCR Pipeline and Text Processing Flow
 
-## Overview
+This document describes how uploaded notes are transformed into clean, usable study content.
 
-The system uses a hybrid OCR pipeline designed for high accuracy across:
+## 1) Where the Pipeline Starts
 
-- Printed documents
-- Handwritten notes
-- Scanned images
-- Camera photos
-- PDFs
+Entry point: `POST /upload`
 
-Primary engine is Microsoft Azure Document Intelligence with PaddleOCR as fallback.
+Implementation file: `backend/app/api/upload.py`
 
----
+Input fields:
+- `file` (required)
+- `summarize_level` (optional): `concise`, `balanced`, `detailed`
 
-## Full Pipeline Flow
+Validation limits:
+- max file size: 450 MB
+- max PDF pages: 1950
 
-```
-Upload File → Validate (size/pages)
-  → OCR (Azure → PaddleOCR fallback)
-  → AI Text Cleaning (Gemini → Groq)
-  → Optionally Summarize (Gemini → Groq → HuggingFace)
-  → Return response
-```
+## 2) Full Processing Sequence
 
----
-
-## Components
-
-### Azure OCR (`azure_ocr_service.py`)
-- Handles printed + handwritten text
-- Best accuracy
-- Cloud based (requires API key)
-- Uses `prebuilt-read` model
-- Adds padding to images for better edge detection
-
-### PaddleOCR (`paddle_ocr.py`)
-- Local fallback (works offline)
-- Handles complex layouts
-- PDF support via pypdfium2 (converts pages to 300 DPI images)
-- Free, no API key needed
-
-### AI Text Cleaner (`text_cleaner.py`)
-- Removes OCR artifacts: page numbers, headers/footers, signatures, garbage characters
-- Preserves all actual content, formatting, math expressions
-- Fallback: Gemini → Groq
-- Runs automatically on all OCR output before summarization
-
-### Summarization (`summarize_pipeline.py`)
-- Three modes: brief, medium, detailed
-- Fallback: Gemini → Groq → HuggingFace (BART-large-CNN)
-- Optional — only runs when requested
-
----
-
-## Why Hybrid Approach
-
-| Problem | Solution |
-|--------|---------|
-| Poor handwritten detection | Azure |
-| Local fallback needed | PaddleOCR |
-| OCR noise/artifacts | AI text cleaning |
-| Reliability | Combined pipeline with fallbacks at every stage |
-
----
-
-## Error Handling
-
-- Azure timeout/failure → falls back to PaddleOCR
-- Gemini cleaning fails → falls back to Groq
-- All summarizers fail → returns `summary_error` in response
-- Unsupported file → returns error message
-- File too large / too many pages → HTTP 413
-
----
-
-## Environment Variables
-
-```
-AZURE_ENDPOINT=your_endpoint
-AZURE_KEY=your_key
-GEMINI_API_KEY=your_gemini_key
-GROQ_API_KEY=your_groq_key
+```text
+Upload file
+-> Save to uploads/
+-> Validate size and page count
+-> OCR extraction (Azure first, Paddle fallback)
+-> AI cleaning of OCR output (Gemini first, Groq fallback)
+-> Optional summary generation (Gemini -> Groq -> HuggingFace)
+-> Return JSON response to frontend
 ```
 
-All optional — the system degrades gracefully with fallbacks.
+## 3) OCR Stage
 
----
+### 3.1 Orchestrator
 
-## Status
+File: `backend/app/services/ocr_pipeline.py`
 
-✅ OCR pipeline stable  
-✅ AI text cleaning integrated  
-✅ Summarization with 3-engine fallback  
-✅ Tested with handwritten + printed  
-✅ PDF support (Azure native + PaddleOCR via pypdfium2)
+Behavior:
+1. Try Azure OCR.
+2. If Azure throws or returns no text, fallback to PaddleOCR.
+3. Return `{ text, engine }`.
 
----
+### 3.2 Azure OCR Service
 
-## Next Steps
+File: `backend/app/services/azure_ocr_service.py`
 
-- Proper frontend connected to backend
-- Database for extraction history
-- Batch file processing
-- Quiz generation
-- Knowledge extraction
+- Uses Azure Document Intelligence `prebuilt-read` flow.
+- Best quality for mixed handwritten/printed documents.
+- Requires `AZURE_ENDPOINT` and `AZURE_KEY`.
+
+### 3.3 PaddleOCR Fallback
+
+File: `backend/app/services/paddle_ocr.py`
+
+- Local fallback OCR.
+- Handles image files directly.
+- For PDFs, converts pages to images via `pypdfium2` before OCR.
+- Used automatically if Azure is unavailable/fails.
+
+## 4) Cleaning Stage
+
+File: `backend/app/services/text_cleaner.py`
+
+Purpose:
+- Remove OCR artifacts and noise.
+- Preserve actual content/meaning.
+
+Fallback chain:
+1. Gemini
+2. Groq
+
+Output:
+- `cleaned_text`
+- `cleaner` engine name
+
+## 5) Optional Summarization Stage
+
+File: `backend/app/services/summarize_pipeline.py`
+
+Modes:
+- concise -> brief
+- balanced -> medium
+- detailed -> detailed
+
+Fallback chain:
+1. Gemini
+2. Groq
+3. HuggingFace
+
+Response fields when requested:
+- `summary`
+- `summarizer`
+- `summary_mode`
+- `summary_error` (if all engines fail)
+
+## 6) Response Contract From /upload
+
+Always returned:
+- `filename`
+- `engine_used`
+- `raw_text`
+- `extracted_text`
+- `cleaner`
+
+Conditionally returned:
+- `summary`
+- `summarizer`
+- `summary_mode`
+- `summary_error`
+
+## 7) Why This Pipeline Is Reliable
+
+| Failure Point | Protection |
+|---|---|
+| Azure OCR outage/error | PaddleOCR fallback |
+| Gemini cleaning failure | Groq fallback |
+| Gemini/Groq summary failure | HuggingFace fallback |
+| Large or invalid files | Explicit validation + HTTP errors |
+
+## 8) Integration With Frontend
+
+Frontend upload call: `frontend/src/services/api.js` -> `uploadFile()`
+
+Used by: `frontend/src/components/FileUpload.jsx`
+
+Frontend then uses:
+- `extracted_text` for study feature generation
+- `summary` for quick summary panel
+- `engine_used` and `cleaner` for metadata
+
+## 9) Environment Variables
+
+Configured in `backend/.env`:
+
+```env
+AZURE_ENDPOINT=...
+AZURE_KEY=...
+GEMINI_API_KEY=...
+GROQ_API_KEY=...
+```
+
+The pipeline supports partial credentials because of fallback behavior.
+
+## 10) Related Docs
+
+- `docs/PROJECT_STRUCTURE_AND_FLOW.md`
+- `Start_here.md`
+- `README.md`
