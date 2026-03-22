@@ -7,7 +7,7 @@ import Workspace from './pages/Workspace';
 import StudyMode from './pages/StudyMode';
 import ModeFeatures from './pages/ModeFeatures';
 import ModeFeature from './pages/ModeFeature';
-import './App.css';
+
 
 function App() {
   const [uploadedData, setUploadedData] = useState(null);
@@ -25,9 +25,9 @@ function App() {
 
   return (
     <Router>
-      <div className="app">
+      <div className="min-h-screen flex flex-col bg-dark text-brand-beige selection:bg-brand-orange/30">
         <Navbar />
-        <main className="main-content">
+        <main className="flex-grow pt-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route

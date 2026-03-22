@@ -1,315 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --primary-color: #0f62fe;
-  --primary-dark: #0b3db8;
-  --primary-light: #3f8cff;
-  --secondary-color: #0f766e;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
-  --danger-color: #ef4444;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-light: #64748b;
-  --bg-light: #f8fafc;
-  --bg-white: #ffffff;
-  --border-color: #dbe3ef;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 8px 18px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 16px 30px rgba(15, 23, 42, 0.13);
-}
-
-body {
-  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: var(--text-primary);
-  background:
-    radial-gradient(circle at 12% 10%, rgba(14, 165, 233, 0.08), transparent 45%),
-    radial-gradient(circle at 85% 15%, rgba(20, 184, 166, 0.08), transparent 42%),
-    var(--bg-light);
-  line-height: 1.5;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-h1 {
-  font-size: 2rem;
-}
-
-h2 {
-  font-size: 1.5rem;
-}
-
-h3 {
-  font-size: 1.25rem;
-}
-
-/* Buttons */
-button, a.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-}
-
-button:focus, a.btn:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-}
-
-.btn-primary {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: var(--primary-dark);
-}
-
-.btn-secondary {
-  background-color: var(--secondary-color);
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #115e59;
-}
-
-.btn-outline {
-  background-color: transparent;
-  border: 1px solid var(--primary-color);
-  color: var(--primary-color);
-}
-
-.btn-outline:hover {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.btn-small {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-}
-
-.btn-large {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-}
-
-/* Form elements */
-input, textarea, select {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.375rem;
-  font-family: inherit;
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  transition: border-color 0.2s ease;
-}
-
-input[type='radio'],
-input[type='checkbox'] {
-  width: auto;
-  padding: 0;
-}
-
-input:focus, textarea:focus, select:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-textarea {
-  resize: vertical;
-  min-height: 100px;
-}
-
-/* Cards */
-.card {
-  background-color: var(--bg-white);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-/* Loading and status */
-.loading {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@layer base {
+  body {
+    @apply bg-dark text-brand-beige font-sans antialiased overflow-x-hidden;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-white;
   }
 }
 
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.badge-primary {
-  background-color: #dbeafe;
-  color: var(--primary-dark);
-}
-
-.badge-success {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.badge-warning {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.badge-danger {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-/* Grid utilities */
-.grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.grid-cols-1 {
-  grid-template-columns: 1fr;
-}
-
-.grid-cols-2 {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.grid-cols-3 {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-@media (max-width: 768px) {
-  .grid-cols-2,
-  .grid-cols-3 {
-    grid-template-columns: 1fr;
+@layer components {
+  .glass-panel {
+    @apply bg-dark-surface/60 backdrop-blur-xl border border-white/5 shadow-xl;
+  }
+  
+  .glass-panel-hover {
+    @apply transition-all duration-300 hover:bg-dark-surface/80 hover:border-white/10 hover:shadow-2xl hover:shadow-brand-orange/10 hover:-translate-y-1;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-orange to-brand-coral;
   }
 }
 
-/* Flexbox utilities */
-.flex {
-  display: flex;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-.flex-col {
-  flex-direction: column;
+::-webkit-scrollbar-track {
+  @apply bg-dark;
 }
-
-.flex-center {
-  justify-content: center;
-  align-items: center;
+::-webkit-scrollbar-thumb {
+  @apply bg-brand-dark-brown/80 rounded-full;
 }
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.gap-4 {
-  gap: 1rem;
-}
-
-.gap-2 {
-  gap: 0.5rem;
-}
-
-/* Spacing utilities */
-.mt-4 {
-  margin-top: 1rem;
-}
-
-.mb-4 {
-  margin-bottom: 1rem;
-}
-
-.p-4 {
-  padding: 1rem;
-}
-
-.px-4 {
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-.py-4 {
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
-
-/* Animations */
-.fade-in {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  h2 {
-    font-size: 1.25rem;
-  }
-
-  h3 {
-    font-size: 1rem;
-  }
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-brand-orange/50;
 }
