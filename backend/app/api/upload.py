@@ -1,7 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from typing import Optional
+import asyncio
+import glob
 import os
 import shutil
+import uuid
 import pypdfium2 as pdfium
 from app.services.ocr_pipeline import extract_text
 from app.services.summarize_pipeline import summarize_text
@@ -28,7 +31,9 @@ async def upload_file(
         "detailed": "detailed"
     }
     
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    # UUID prefix prevents filename collisions on concurrent uploads
+    safe_filename = f"{uuid.uuid4().hex[:8]}_{file.filename}"
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -60,8 +65,17 @@ async def upload_file(
             os.remove(file_path)
             raise HTTPException(status_code=400, detail=f"Could not read PDF: {e}")
 
-    # OCR extraction
-    result = extract_text(file_path)
+    # OCR extraction (sync — run in executor to avoid blocking the event loop)
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(None, extract_text, file_path)
+    finally:
+        # Clean up uploaded file and any temp files created by OCR (e.g. _padded.jpg)
+        for f in glob.glob(file_path + "*"):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
     raw_text = result["text"]
 
     # AI-powered text cleaning (async)
@@ -80,6 +94,9 @@ async def upload_file(
     if summarize_level and summarize_level in summary_mode_map:
         summary_mode = summary_mode_map[summarize_level]
         if cleaned and cleaned.strip():
+            # Brief cooldown so the cleaning call's API quota window can tick
+            # over — prevents back-to-back calls from tripping rate limits.
+            await asyncio.sleep(4.0)
             summary_result = await summarize_text(cleaned, mode=summary_mode)
             response["summary"] = summary_result.get("summary")
             response["summarizer"] = summary_result.get("summarizer")

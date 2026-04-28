@@ -1,6 +1,7 @@
 import os
 import re
 import httpx
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -60,6 +61,9 @@ async def summarize_groq(
         outline = await _extract_outline(text)
     section_labels = _parse_section_labels(outline)
     print(f"  📋 Extracted {len(section_labels)} sections from outline")
+
+    # Cooldown to prevent burst limit (429) on free-tier API
+    await asyncio.sleep(2.5)
 
     print(f"  📝 Pass 2: Generating {mode} summary (Groq)...")
     summary, was_truncated = await _generate_constrained_summary(
@@ -138,7 +142,8 @@ async def _extract_outline(text: str) -> str:
 
 
 def _estimate_outline_tokens(text: str) -> int:
-    return max(4096, min(len(text) // 4, 12000))
+    """Cap Groq outline tokens to avoid 6000 TPM limits."""
+    return 2048
 
 
 def _parse_section_labels(outline: str) -> list[str]:
@@ -617,11 +622,5 @@ def _word_targets(word_count: int) -> dict:
 
 
 def _max_tokens(text: str, mode: str) -> int:
-    estimated_input_tokens = len(text) // 4
-    ratios = {"brief": 0.50, "medium": 0.75, "detailed": 1.0}
-    ratio = ratios.get(mode, 0.75)
-    tokens = int(estimated_input_tokens * ratio)
-    mins = {"brief": 4096, "medium": 8192, "detailed": 12288}
-    token_min = mins.get(mode, 8192)
-    # Groq caps at ~32K context
-    return max(token_min, min(tokens, 20000))
+    """Strict token ceiling to prevent Groq 413 Payload Too Large and TPM errors."""
+    return 2048

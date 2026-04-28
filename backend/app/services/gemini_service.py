@@ -1,6 +1,7 @@
 import os
 import re
 import httpx
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,9 +15,11 @@ GEMINI_MODELS = [
     "gemma-3-4b-it",
 ]
 
-# Outline extraction only needs the lightest/fastest model.
+# Outline extraction uses fallback list.
 GEMINI_MODELS_OUTLINE = [
     "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
+    "gemma-3-4b-it",
 ]
 
 
@@ -66,6 +69,9 @@ async def summarize_gemini(
         outline = await _extract_outline(text)
     section_labels = _parse_section_labels(outline)
     print(f"  📋 Extracted {len(section_labels)} sections from outline")
+
+    # Cooldown to prevent burst limit (429) on free-tier API
+    await asyncio.sleep(2.5)
 
     print(f"  📝 Pass 2: Generating {mode} summary...")
     summary, was_truncated = await _generate_constrained_summary(
@@ -141,8 +147,8 @@ async def _extract_outline(text: str) -> str:
 
 
 def _estimate_outline_tokens(text: str) -> int:
-    """Outline is shorter than source — but be generous to avoid truncation."""
-    return max(4096, min(len(text) // 4, 16384))
+    """Outline is shorter than source — cap to Gemini's 8192 API limit."""
+    return min(max(2048, len(text) // 4), 8192)
 
 
 def _parse_section_labels(outline: str) -> list[str]:
@@ -614,20 +620,5 @@ def _word_targets(word_count: int) -> dict:
 
 
 def _max_tokens(text: str, mode: str) -> int:
-    """Generous token ceiling to prevent truncation.
-
-    The prompt's word targets control actual length; this is just
-    a safety ceiling so the model has room to finish.
-    """
-    estimated_input_tokens = len(text) // 4
-
-    # Very generous — we'd rather the model finishes than truncates
-    ratios = {"brief": 0.50, "medium": 0.75, "detailed": 1.0}
-    ratio = ratios.get(mode, 0.75)
-    tokens = int(estimated_input_tokens * ratio)
-
-    # High minimums — short docs need room too
-    mins = {"brief": 4096, "medium": 8192, "detailed": 12288}
-    token_min = mins.get(mode, 8192)
-
-    return max(token_min, min(tokens, 65536))
+    """Generous token ceiling that never exceeds Gemini's 8192 limit."""
+    return 8192

@@ -44,73 +44,25 @@ async def summarize_text(text: str, mode: str = "medium") -> dict:
     cached_outline = _outline_cache.get(th)
 
     # ------------------------------------------------------------------
-    # BRIEF — sequential (Groq → Gemini → HF), single-pass, no outline
+    # SEQUENTIAL FALLBACK — Groq → Gemini → HuggingFace
     # ------------------------------------------------------------------
-    if mode == "brief":
-        # 1. Groq (fastest)
-        result = await _try_engine(
-            "groq", summarize_groq, text, mode,
-            source_word_count, cached_outline,
-        )
-        if result:
-            _maybe_cache_outline(th, result)
-            return result
-
-        # 2. Gemini
-        result = await _try_engine(
-            "gemini", summarize_gemini, text, mode,
-            source_word_count, cached_outline,
-        )
-        if result:
-            _maybe_cache_outline(th, result)
-            return result
-
-        # 3. HuggingFace
-        return await _try_huggingface(text, mode, source_word_count)
-
-    # ------------------------------------------------------------------
-    # MEDIUM / DETAILED — parallel race (Groq vs Gemini), then HF
-    # ------------------------------------------------------------------
-    groq_task = asyncio.create_task(
-        _engine_wrapper("groq", summarize_groq, text, mode, cached_outline)
+    # 1. Groq (fastest)
+    result = await _try_engine(
+        "groq", summarize_groq, text, mode,
+        source_word_count, cached_outline,
     )
-    gemini_task = asyncio.create_task(
-        _engine_wrapper("gemini", summarize_gemini, text, mode, cached_outline)
+    if result:
+        _maybe_cache_outline(th, result)
+        return result
+
+    # 2. Gemini
+    result = await _try_engine(
+        "gemini", summarize_gemini, text, mode,
+        source_word_count, cached_outline,
     )
-
-    done, pending = await asyncio.wait(
-        {groq_task, gemini_task},
-        return_when=asyncio.FIRST_COMPLETED,
-    )
-
-    # Cancel the loser
-    for task in pending:
-        task.cancel()
-        try:
-            await task
-        except (asyncio.CancelledError, Exception):
-            pass
-
-    # Check winner
-    for task in done:
-        exc = task.exception()
-        if exc is None:
-            engine, summary, outline = task.result()
-            if summary:
-                if outline:
-                    _outline_cache[th] = outline
-                return _build_result(summary, engine, mode, source_word_count)
-
-    # If the winner raised, try the pending ones that were cancelled — fall
-    # back sequentially through whichever engine didn't win.
-    print("⚠️  Parallel race produced no result, trying sequentially...")
-    for engine_name, fn in [("groq", summarize_groq), ("gemini", summarize_gemini)]:
-        result = await _try_engine(
-            engine_name, fn, text, mode, source_word_count, cached_outline,
-        )
-        if result:
-            _maybe_cache_outline(th, result)
-            return result
+    if result:
+        _maybe_cache_outline(th, result)
+        return result
 
     # 3. HuggingFace (last resort)
     return await _try_huggingface(text, mode, source_word_count)

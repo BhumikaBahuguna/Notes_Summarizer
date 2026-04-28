@@ -23,17 +23,17 @@ def extract_json(text: str) -> dict | None:
     if match:
         try:
             return json.loads(match.group(1).strip())
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             pass
     try:
         return json.loads(text.strip())
-    except Exception:
+    except (json.JSONDecodeError, ValueError):
         pass
     match = re.search(r'\{[\s\S]*\}', text)
     if match:
         try:
             return json.loads(match.group(0))
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             pass
     return None
 
@@ -366,7 +366,8 @@ async def _call_gemini(prompt: str) -> str | None:
             if not data.get("candidates"):
                 return None
             return data["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception:
+    except Exception as e:
+        print(f"    ⚠️  Gemini API call failed: {e}")
         return None
 
 
@@ -382,7 +383,7 @@ async def _call_groq(prompt: str) -> str | None:
                     "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
-                    "max_tokens": 8192,
+                    "max_tokens": 2048,
                 },
             )
             response.raise_for_status()

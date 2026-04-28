@@ -26,7 +26,7 @@ def extract_json(text: str) -> dict | None:
         json_str = match.group(1).strip()
         try:
             return json.loads(json_str)
-        except:
+        except (json.JSONDecodeError, ValueError):
             pass
     
     # Try to parse the entire text as JSON
@@ -40,7 +40,7 @@ def extract_json(text: str) -> dict | None:
     if match:
         try:
             return json.loads(match.group(0))
-        except:
+        except (json.JSONDecodeError, ValueError):
             pass
     
     return None
@@ -149,7 +149,7 @@ async def _call_groq(prompt: str) -> list | None:
                     "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.4,
-                    "max_tokens": 4096,
+                    "max_tokens": 1024,
                 },
             )
             response.raise_for_status()

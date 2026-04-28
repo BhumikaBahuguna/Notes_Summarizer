@@ -1,39 +1,26 @@
 # Notes Summarizer
 
-Notes Summarizer is a full-stack AI study assistant.
-
-It takes uploaded notes (PDF/images), runs OCR with fallback, cleans noisy OCR text, generates summaries, and creates interactive study materials including cheat sheets, expected questions, quizzes, diagrams, videos, and an Advanced Study Mode workflow.
+Notes Summarizer is a full-stack, AI-powered study assistant designed to ingest unstructured documents and intelligently transform them into customized study materials.
 
 ## Core Capabilities
 
-- OCR extraction with fallback: Azure OCR -> PaddleOCR
-- AI text cleaning with fallback: Gemini -> Groq
-- Summary generation: Groq primary (parallel race with Gemini for medium/detailed), HuggingFace last resort
-- Single-pass brief summaries, two-pass with validation for medium/detailed
-- Multiple study outputs: summary, cheat sheet, questions, quiz, videos, and Mermaid diagrams
-- Advanced Study Mode with mode-specific feature sets and an AI tutor
-- React frontend with stage-based navigation and progress feedback
-- FastAPI backend with dedicated routers for upload, features, and study mode
-
-## End-to-End Pipeline
-
-```text
-Upload file
--> Validate size/pages
--> OCR (Azure -> Paddle fallback)
--> Text cleaning (Gemini -> Groq fallback)
--> Optional summary:
-     brief:           single-pass Groq (-> Gemini -> HuggingFace)
-     medium/detailed:  parallel race Groq vs Gemini (-> HuggingFace)
--> Generate study features on demand
-```
+- **Hybrid OCR Extraction:** Primary extraction via Azure Document Intelligence, with a robust local fallback to PaddleOCR to ensure maximum uptime.
+- **AI Text Cleaning:** Uses instruction-tuned LLMs (Gemini primary, Groq fallback) to strip OCR artifacts (page numbers, headers, signatures) while preserving educational content.
+- **Adaptive Summarization:** 
+  - **Brief:** Single-pass ultra-fast processing.
+  - **Medium/Detailed:** Parallel racing architecture (Groq vs. Gemini) to minimize latency.
+- **Contextual Study Modes:** Dynamically generates study materials across three cognitive workflows:
+  - **Quick Revision:** Ultra-summaries, mini-quizzes, concept trees.
+  - **Deep Study:** Detailed summaries, flashcards, concept maps, AI Tutor.
+  - **Exam Preparation:** Expected questions, 3-tier difficulty quizzes, high-probability topics.
+- **Stateless Architecture:** No user accounts, no databases, guaranteeing maximum privacy and simplified deployment.
 
 ## Tech Stack
 
-- Frontend: React, Vite, React Router, Axios, Mermaid
-- Backend: FastAPI, Uvicorn, Pydantic
-- OCR: Azure Document Intelligence, PaddleOCR, pypdfium2
-- AI providers: Gemini, Groq, HuggingFace
+- **Frontend:** React, Vite, React Router, Tailwind CSS, Mermaid.js
+- **Backend:** FastAPI, Uvicorn, Pydantic, asyncio
+- **Extraction:** Azure Document Intelligence, PaddleOCR, pypdfium2
+- **AI Providers:** Gemini, Groq, HuggingFace
 
 ## Quick Start
 
@@ -61,12 +48,11 @@ npm install
 npm run dev
 ```
 
-Frontend runs on the Vite dev URL (typically `http://localhost:5173`).
-Backend runs on `http://127.0.0.1:8000`.
+Frontend runs on `http://localhost:5173`. Backend runs on `http://127.0.0.1:8000`.
 
 ## Environment Variables
 
-Create `backend/.env` with values as available:
+Create `backend/.env` with the following:
 
 ```env
 AZURE_ENDPOINT=...
@@ -75,49 +61,28 @@ GEMINI_API_KEY=...
 GROQ_API_KEY=...
 ```
 
-The app is designed with fallbacks and can still operate with partial credentials.
+*Note: The app is designed with multi-tiered fallbacks and can still operate locally with partial credentials.*
 
 ## API Overview
 
 ### System
-
-- GET `/` - health check
-- POST `/upload` - OCR, cleaning, optional summary
+- `GET /` - Health check
+- `POST /upload` - Validates, OCRs, cleans, and optionally summarizes files.
 
 ### Standard Feature Endpoints
-
-- POST `/cheat-sheet`
-- POST `/questions`
-- POST `/quiz`
-- POST `/youtube`
-- POST `/diagram`
+- `POST /cheat-sheet`
+- `POST /questions`
+- `POST /quiz`
+- `POST /youtube`
+- `POST /diagram`
 
 ### Advanced Study Mode Endpoints
-
-- POST `/study-mode/generate`
-- POST `/study-mode/ai-tutor`
-
-## Frontend Routes
-
-- `/` - Home
-- `/workspace` - upload + main study materials
-- `/study-mode` - select one of 3 study modes
-- `/study-mode/:modeId` - mode-specific feature list
-- `/study-mode/:modeId/:featureId` - selected feature workspace
+- `POST /study-mode/generate` - Dispatches generation based on mode and feature ID.
+- `POST /study-mode/ai-tutor` - Conversational context-aware endpoint.
 
 ## Documentation Map
 
-- `Start_here.md` - complete setup guide (backend + frontend)
-- `docs/OCR_PIPELINE.md` - detailed OCR/cleaning/summarization flow
-- `docs/PROJECT_STRUCTURE_AND_FLOW.md` - architecture, stages, and file-level mapping
-- `docs/CHANGELOG.md` - implementation history and release notes
-
-## Project Status
-
-The project is active and includes:
-
-- production-like frontend flow
-- integrated backend feature APIs
-- advanced mode-based study experience
-- updated docs aligned with current implementation
-
+- `PROJECT_OVERVIEW.md` - High-level overview, architecture, and tech stack.
+- `DEEP_PROJECT_EXPLANATION.md` - Exhaustive reverse-engineering guide, internal pipeline logic, and Viva defense prep.
+- `docs/OCR_PIPELINE.md` - Detailed OCR and cleaning fallback logic.
+- `docs/PROJECT_STRUCTURE_AND_FLOW.md` - File-level architecture and request mapping.

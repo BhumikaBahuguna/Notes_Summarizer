@@ -35,13 +35,13 @@ def extract_json(text: str) -> dict | None:
         json_str = match.group(1).strip()
         try:
             return json.loads(json_str)
-        except:
+        except (json.JSONDecodeError, ValueError):
             pass
     
     # Try to parse the entire text as JSON
     try:
         return json.loads(text.strip())
-    except:
+    except (json.JSONDecodeError, ValueError):
         pass
     
     # Try to find JSON object in the text
@@ -49,7 +49,7 @@ def extract_json(text: str) -> dict | None:
     if match:
         try:
             return json.loads(match.group(0))
-        except:
+        except (json.JSONDecodeError, ValueError):
             pass
     
     return None
@@ -142,6 +142,10 @@ def _normalize_mermaid_code(code: str) -> str:
     cleaned = cleaned.replace("\u201c", '"').replace("\u201d", '"').replace("\u2018", "'").replace("\u2019", "'")
 
     first_line = cleaned.splitlines()[0].strip() if cleaned.splitlines() else ""
+    SUPPORTED_PREFIXES = (
+        "graph", "flowchart", "sequenceDiagram", "classDiagram",
+        "stateDiagram", "erDiagram", "gantt", "pie", "journey", "mindmap", "timeline"
+    )
     if not first_line.startswith(SUPPORTED_PREFIXES):
         return ""
 
@@ -246,7 +250,8 @@ async def _call_gemini(prompt: str) -> dict | None:
             if result:
                 return result
             return None
-    except Exception:
+    except Exception as e:
+        print(f"    ⚠️  Gemini API call failed: {e}")
         return None
 
 
@@ -267,7 +272,7 @@ async def _call_groq(prompt: str) -> dict | None:
                     "model": "llama-3.3-70b-versatile",
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
-                    "max_tokens": 8192,
+                    "max_tokens": 2048,
                 },
             )
             response.raise_for_status()
@@ -282,5 +287,6 @@ async def _call_groq(prompt: str) -> dict | None:
             if result:
                 return result
             return None
-    except Exception:
+    except Exception as e:
+        print(f"    ⚠️  Groq API call failed: {e}")
         return None

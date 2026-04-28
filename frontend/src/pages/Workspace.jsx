@@ -6,7 +6,7 @@ import { FileText, Cpu, AlignLeft, RotateCcw, LayoutTemplate } from 'lucide-reac
 import { cn } from '../lib/utils';
 
 function Workspace({ uploadedData, setUploadedData, onNotify }) {
-  const [activeTab, setActiveTab] = useState('upload');
+  const [activeTab, setActiveTab] = useState(uploadedData ? 'results' : 'upload');
   const extractedWordCount = uploadedData?.extracted_text
     ? uploadedData.extracted_text.trim().split(/\s+/).length
     : 0;

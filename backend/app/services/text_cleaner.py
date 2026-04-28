@@ -11,7 +11,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Cleaning just removes OCR artifacts — even small models handle it well.
 GEMINI_MODELS = [
     "gemini-2.0-flash-lite",   # lightest, fastest — perfect for cleaning
-    "gemini-2.5-flash-lite",   # light variant
     "gemini-2.0-flash",        # stable fallback
     "gemma-3-4b-it",           # small open model, last resort
 ]
@@ -97,11 +96,13 @@ async def clean_text(raw_text: str) -> dict:
 
 async def _clean_with_gemini(prompt: str) -> str:
     """Try multiple Gemini models for cleaning, same fallback logic as summarization."""
+    # Scale output tokens with input length so long documents aren't truncated
+    estimated_tokens = max(8192, min(len(prompt) // 3, 32000))
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 8192,
+            "maxOutputTokens": estimated_tokens,
         },
     }
 
@@ -166,7 +167,7 @@ async def _clean_with_groq(prompt: str) -> str:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 8192,
+        "max_tokens": 2048,
     }
 
     async with httpx.AsyncClient() as client:
@@ -197,8 +198,10 @@ _PAGE_ARTIFACT_PATTERNS = [
     r"^\s*-\s*\d+\s*-\s*$",
     # "Date___", "Date.____", standalone date headers
     r"(?i)^\s*date\s*[:\.\-_]+\s*$",
-    # Short university abbreviations alone on a line (PPU, VTU, GTU, etc.)
-    r"(?im)^\s*[A-Z]{2,5}\s*$",
+    # Short university abbreviations alone on a line (must be the ONLY thing
+    # on the line, with nothing else — avoids stripping legitimate acronyms
+    # like DNA, HTTP, API, SRS that may appear in content)
+    r"(?im)^\s*(?:PPU|VTU|GTU|SPPU|KTU|AKTU|RGPV|JNTU|BPUT|RTU)\s*$",
     # Blank-line runs (3+ → 1)
     r"\n{3,}",
 ]
